@@ -125,7 +125,7 @@ export interface Alert {
   id: string;
   patient_id?: string;
   patientId?: string;
-  level: "reminder" | "family" | "doctor";
+  level: "reminder" | "family" | "doctor" | "wearable_anomaly" | "doctor_note";
   audience: "patient" | "family" | "doctor";
   message: string;
   created_at?: string;
@@ -205,13 +205,19 @@ export interface PatientDetail {
   wearable?: WearableContext | null;
 }
 
+export interface DoctorNoteReminder {
+  medicine: string;
+  time: string;
+  instruction: string;
+}
+
 export interface DoctorNote {
   id: string;
   patient_id: string;
   doctor_id: string;
   note_text: string;
   parsed_instructions?: {
-    reminders: { medicine: string; time: string; instruction: string }[];
+    reminders: DoctorNoteReminder[];
     goals: { category: "steps" | "medicine" | "bp" | "glucose" | "other"; target: string; by: string }[];
     followUpDate: string | null;
   } | null;
@@ -227,6 +233,11 @@ export interface PatientGoal {
   source_note_id?: string | null;
   completed_at?: string | null;
   created_at: string;
+}
+
+export interface GoalsResponse {
+  goals: PatientGoal[];
+  latestNote: DoctorNote | null;
 }
 
 export interface DoctorActionRequest {

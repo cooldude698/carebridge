@@ -491,13 +491,22 @@ export const INITIAL_FAMILY_FEED = {
   },
   alerts: [
     {
-      id: "fam-alert-1",
+      id: "fam-alert-doc",
       patientId: "p1",
-      level: "reminder" as const,
+      level: "doctor_note" as const,
       audience: "family" as const,
-      message: "Morning doses (Amlodipine & Metformin) taken on time at 8:15 AM.",
-      createdAt: "4 hours ago",
-      acknowledgedAt: "4 hours ago",
+      message: "Dr. Rao has updated the care plan.",
+      createdAt: "30 mins ago",
+      acknowledgedAt: null,
+    },
+    {
+      id: "fam-alert-wearable",
+      patientId: "p1",
+      level: "wearable_anomaly" as const,
+      audience: "family" as const,
+      message: "Ramesh ji's heart rate was a bit high during sleep.",
+      createdAt: "1 hour ago",
+      acknowledgedAt: null,
     },
     {
       id: "fam-alert-2",
@@ -507,6 +516,15 @@ export const INITIAL_FAMILY_FEED = {
       message: "Blood Pressure checked: 142/88 mmHg. Slightly elevated but stable.",
       createdAt: "Today, 8:30 AM",
       acknowledgedAt: null,
+    },
+    {
+      id: "fam-alert-1",
+      patientId: "p1",
+      level: "reminder" as const,
+      audience: "family" as const,
+      message: "Morning doses (Amlodipine & Metformin) taken on time at 8:15 AM.",
+      createdAt: "4 hours ago",
+      acknowledgedAt: "4 hours ago",
     },
     {
       id: "fam-alert-3",

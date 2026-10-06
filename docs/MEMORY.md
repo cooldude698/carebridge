@@ -44,7 +44,12 @@ Family: Ramesh's son Karan (Bengaluru). Doctor: Dr. Meera Rao, Sunrise Clinic (f
 (next, react, tailwindcss, @supabase/supabase-js, recharts, lucide-react, framer-motion by default)
 
 ## Status log
-(Newest first. One line each: time, who, done/blocked.)
+- 2026-10-06 02:30, Swapin, Phase 6 DONE: Completed font audit (strictly Montserrat, DM Sans, Sora), color audit (tokens only, Recharts SVG chart styling exception), design/motion.ts variants (riskBadgeSwap, listSlide layout FLIP, micPulse, prefers-reduced-motion check), accessibility pass (modal focus trap, Escape listeners on BriefPanel & DoctorNoteModal, aria-labels), and populated design/screenshots/.
+- 2026-10-06 02:22, Swapin, Phase 5 DONE: Built lib/voice/useBriefStream SSE hook with fallback & token appending, wired real streaming into Doctor Portal; upgraded app/(family)/family/page.tsx and AlertItem with wearable_anomaly & doctor_note alert cards, strict urgency sort order, 3-language switcher (EN/HI/KN), and DM Sans relative timestamp footer.
+- 2026-10-06 01:54, Swapin, Phase 4 DONE: upgraded app/(patient)/patient/page.tsx with "Your Health Today" gentle wearable cards, interactive GoalItem (56px touch target), DoctorNoteCard with reminders & optimistic goal completion, and full Hindi/Kannada/English i18n support.
+- 2026-10-06 01:38, Swapin, Phase 3 DONE: upgraded app/(doctor)/doctor/[id]/page.tsx with Wearable Data 2nd tab & red anomaly dot, BriefPanel drawer wire-up with citations, DoctorNoteModal care plan updater, and urgent alert banner.
+- 2026-10-06 01:35, Swapin, Phase 2 DONE: upgraded components/ui/BriefPanel.tsx to sliding drawer with Framer Motion, dynamic 3-section parsing, citation chips, source badges, and streaming cursor.
+- 2026-10-06 01:30, Swapin, Phase 1 DONE: built components/ui/WearablePanel.tsx with 3 Recharts line graphs, Sora numbers, DM Sans labels, deterministic AnomalyBanner strip, and empty/loading states.
 - 2026-10-06 01:30, Aryan, Backend Phases 1-5 complete: Wearable processor (buildWearableContext), cited AI brief, SSE stream route (/api/patients/:id/brief/stream), doctor note -> patient goals feedback loop, AI audit endpoint, and hr_spike sim event.
 - 2026-10-06 00:15, All, Merged swapin/ui to main. Lint and build clean. Full system operational.
 - 2026-10-06 00:05, Vedesh, Phase 4 & 5 DONE: Created complete hackathon submission document (docs/SUBMISSION.md), 2-minute live demo rehearsal guide with contingency playbook (docs/DEMO_SCRIPT.md), 1-page judge disclosure matrix (docs/REAL_VS_SIMULATED.md).

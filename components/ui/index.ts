@@ -66,7 +66,7 @@ export { VoiceButton } from "./VoiceButton";
 export type { VoiceButtonProps, VoiceState, VoiceLanguage } from "./VoiceButton";
 
 export { BriefPanel } from "./BriefPanel";
-export type { BriefPanelProps, BriefData } from "./BriefPanel";
+export type { BriefPanelProps, BriefData, CitationItem } from "./BriefPanel";
 
 export { ConsentToggle } from "./ConsentToggle";
 export type { ConsentToggleProps, ConsentCategory } from "./ConsentToggle";
@@ -79,3 +79,12 @@ export type { EmptyStateProps } from "./EmptyState";
 
 export { Skeleton } from "./Skeleton";
 export type { SkeletonProps } from "./Skeleton";
+
+export { WearablePanel } from "./WearablePanel";
+export type { WearablePanelProps } from "./WearablePanel";
+
+export { GoalItem } from "./GoalItem";
+export type { GoalItemProps } from "./GoalItem";
+
+export { DoctorNoteCard } from "./DoctorNoteCard";
+export type { DoctorNoteCardProps, DoctorNoteReminder, DoctorNoteGoal } from "./DoctorNoteCard";

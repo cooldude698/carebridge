@@ -21,7 +21,7 @@ export const DoctorHeader: React.FC<DoctorHeaderProps> = ({ urgentCount = 1 }) =
           <div className="w-8 h-8 rounded-full border-2 border-ink-900 bg-white flex items-center justify-center shadow-[2px_2px_0px_#121214] group-hover:rotate-12 transition-transform">
             <DoodleDaisy size={18} color="#121214" centerColor="#FEE159" />
           </div>
-          <span className="font-serif font-black text-xl text-ink-900 tracking-tight">
+          <span className="font-display font-bold text-xl text-ink-900 tracking-tight">
             carebridge
           </span>
         </Link>
@@ -29,10 +29,10 @@ export const DoctorHeader: React.FC<DoctorHeaderProps> = ({ urgentCount = 1 }) =
         <div className="hidden sm:block h-6 w-[2px] bg-ink-900" />
 
         <div className="hidden md:flex flex-col">
-          <span className="font-serif font-black text-sm text-ink-900 leading-tight">
+          <span className="font-display font-bold text-sm text-ink-900 leading-tight">
             Dr. Meera Rao
           </span>
-          <span className="font-mono text-[11px] text-ink-500">
+          <span className="font-body text-[11px] text-ink-500">
             Sunrise Clinic • Chronic Care Decision Support
           </span>
         </div>
@@ -41,13 +41,13 @@ export const DoctorHeader: React.FC<DoctorHeaderProps> = ({ urgentCount = 1 }) =
       {/* Urgent Alert Banner & Navigation */}
       <div className="flex items-center gap-3">
         {urgentCount > 0 && (
-          <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-[#FEE2E2] border-2 border-red-600 text-red-900 text-xs font-mono font-bold shadow-[2px_2px_0px_#DC2626]">
+          <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-[#FEE2E2] border-2 border-red-600 text-red-900 text-xs font-data font-bold shadow-[2px_2px_0px_#DC2626]">
             <ShieldAlert className="w-3.5 h-3.5 text-red-600" />
             <span>{urgentCount} URGENT PATIENT FLAGGED</span>
           </div>
         )}
 
-        <nav className="flex items-center gap-2 font-mono text-xs font-bold">
+        <nav className="flex items-center gap-2 font-display text-xs font-bold">
           <Link
             href="/doctor"
             className={`px-3 py-1.5 rounded-full border-2 border-ink-900 transition flex items-center gap-1.5 ${

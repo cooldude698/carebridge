@@ -14,11 +14,18 @@ export async function POST(
     const body = await request.json();
     const { type, valueA, valueB } = body;
 
-    if (!type || typeof valueA !== "number" || !["bp", "steps", "glucose"].includes(type)) {
+    if (!type || typeof valueA !== "number" || !["bp", "steps", "glucose", "flag_acknowledged"].includes(type)) {
       return NextResponse.json(
-        { error: "Valid type ('bp' | 'steps' | 'glucose') and numeric valueA are required." },
+        { error: "Valid type ('bp' | 'steps' | 'glucose' | 'flag_acknowledged') and numeric valueA are required." },
         { status: 400 }
       );
+    }
+
+    if (type === "flag_acknowledged") {
+      return NextResponse.json({
+        success: true,
+        message: "Wearable flag acknowledged by patient",
+      });
     }
 
     try {

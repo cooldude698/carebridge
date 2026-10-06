@@ -6,6 +6,7 @@
 
 import * as React from "react";
 import { Clock } from "lucide-react";
+import { motion } from "framer-motion";
 import { RiskBadge, type RiskBand } from "./RiskBadge";
 
 export interface PatientRowData {
@@ -103,7 +104,10 @@ export const PatientRow: React.FC<PatientRowProps> = (props) => {
   };
 
   return (
-    <div
+    <motion.div
+      layout
+      layoutId={`patient-row-${id}`}
+      transition={{ duration: 0.22, ease: "easeOut" }}
       role="button"
       tabIndex={0}
       aria-pressed={isSelected}
@@ -111,8 +115,8 @@ export const PatientRow: React.FC<PatientRowProps> = (props) => {
       onClick={handleClick}
       onKeyDown={handleKey}
       className={[
-        "flex items-center gap-3.5 p-3.5 rounded-2xl border-2 border-ink-900",
-        "cursor-pointer select-none transition-all duration-150 ease-out",
+        "flex items-center gap-3.5 p-3.5 rounded-2xl border-2 border-[var(--ink-900)]",
+        "cursor-pointer select-none transition-colors duration-150 ease-out",
         isSelected
           ? "bg-[#D4F77C] shadow-[3px_3px_0px_#121214] -translate-y-0.5"
           : "bg-white hover:bg-[#FAF8F5] shadow-[2px_2px_0px_#121214] hover:shadow-[3px_3px_0px_#121214]",
@@ -123,7 +127,7 @@ export const PatientRow: React.FC<PatientRowProps> = (props) => {
     >
       {/* Avatar with 2px border */}
       <div
-        className="w-10 h-10 rounded-full border-2 border-ink-900 bg-white flex items-center justify-center font-serif font-black text-xs shrink-0 shadow-[1.5px_1.5px_0px_#121214]"
+        className="w-10 h-10 rounded-full border-2 border-[var(--ink-900)] bg-white flex items-center justify-center font-display font-bold text-xs shrink-0 shadow-[1.5px_1.5px_0px_#121214]"
         aria-hidden="true"
       >
         {initials(name)}
@@ -132,14 +136,14 @@ export const PatientRow: React.FC<PatientRowProps> = (props) => {
       {/* Name + reason */}
       <div className="flex-1 min-w-0">
         <div className="flex items-baseline gap-2">
-          <span className="font-serif font-black text-sm text-ink-900 truncate">
+          <span className="font-display font-bold text-sm text-[var(--ink-900)] truncate">
             {name}
           </span>
-          <span className="font-mono text-[11px] text-ink-500 font-bold shrink-0">
+          <span className="font-data text-[11px] text-[var(--ink-500)] font-bold shrink-0">
             {age}y
           </span>
         </div>
-        <p className="font-sans text-xs text-ink-700 truncate mt-0.5">
+        <p className="font-body text-xs text-[var(--ink-700)] truncate mt-0.5">
           {topReason}
         </p>
       </div>
@@ -147,12 +151,12 @@ export const PatientRow: React.FC<PatientRowProps> = (props) => {
       {/* Badge + last seen */}
       <div className="flex flex-col items-end gap-1 shrink-0">
         <RiskBadge band={band} score={score} size="sm" />
-        <div className="flex items-center gap-1 text-ink-500 font-mono text-[10px]">
+        <div className="flex items-center gap-1 text-[var(--ink-500)] font-data text-[10px]">
           <Clock size={10} aria-hidden="true" />
           <span>{formatLastSeen(lastSeen)}</span>
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 };
 

@@ -12,11 +12,11 @@
 "use client";
 
 import * as React from "react";
-import { Bell, Users, Stethoscope, AlertTriangle, Check } from "lucide-react";
+import { Bell, Users, Stethoscope, AlertTriangle, Check, Activity } from "lucide-react";
 import { Card } from "./Card";
 import { Button } from "./Button";
 
-export type AlertLevel = "reminder" | "family" | "doctor" | "urgent" | "info" | "warning" | "critical";
+export type AlertLevel = "reminder" | "family" | "doctor" | "urgent" | "info" | "warning" | "critical" | "wearable_anomaly" | "doctor_note";
 
 export interface AlertItemProps {
   id?: string;
@@ -77,6 +77,22 @@ const levelConfig: Record<
     badgeBg: "bg-[var(--risk-amber-bg)]",
     badgeColor: "text-[var(--risk-amber)]",
   },
+  wearable_anomaly: {
+    label: "WEARABLE ALERT",
+    icon: Activity,
+    iconBg: "bg-[var(--risk-amber-bg)]",
+    iconColor: "text-[var(--risk-amber)]",
+    badgeBg: "bg-[var(--risk-amber-bg)]",
+    badgeColor: "text-[var(--risk-amber)]",
+  },
+  doctor_note: {
+    label: "CARE PLAN",
+    icon: Stethoscope,
+    iconBg: "bg-[var(--surface-teal)]",
+    iconColor: "text-[var(--brand-teal)]",
+    badgeBg: "bg-[var(--surface-teal)]",
+    badgeColor: "text-[var(--brand-teal)]",
+  },
   warning: {
     label: "WARNING",
     icon: Stethoscope,
@@ -118,7 +134,15 @@ export function AlertItem({
   className = "",
 }: AlertItemProps) {
   const isAck = acknowledged || Boolean(acknowledgedAt);
-  const displayTime = time || (createdAt ? new Date(createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "");
+  let displayTime = time || "";
+  if (!displayTime && createdAt) {
+    const d = new Date(createdAt);
+    if (!isNaN(d.getTime())) {
+      displayTime = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    } else {
+      displayTime = createdAt;
+    }
+  }
   const config = levelConfig[level] || levelConfig.reminder;
   const Icon = config.icon;
 

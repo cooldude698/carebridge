@@ -43,40 +43,59 @@ export function BottomNav({ locale = 'en' }: BottomNavProps) {
   ];
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-white border-t-2 border-ink-900 shadow-[0px_-2px_0px_#121214] h-[72px]">
-      <div className="max-w-md mx-auto h-full px-3 flex items-center justify-around">
+    <nav className="fixed bottom-0 left-0 right-0 md:left-1/2 md:-translate-x-1/2 md:max-w-md z-50 bg-white border-t-2 md:border-x-2 border-ink-900 shadow-[0px_-2px_0px_#121214] h-[68px] pb-1 select-none">
+      <div className="w-full h-full px-2 flex items-center justify-around">
         {navItems.map((item) => {
           const isActive = pathname === item.href;
           const Icon = item.icon;
+
+          if (item.isSpecial) {
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className="flex flex-col items-center justify-center -mt-5 group"
+              >
+                <div
+                  className={`w-12 h-12 rounded-full bg-[#FF5C98] border-2 border-ink-900 flex items-center justify-center shadow-[2px_2px_0px_#121214] group-active:translate-y-0.5 group-hover:scale-105 transition-all ${
+                    isActive ? 'ring-2 ring-ink-900 ring-offset-2' : ''
+                  }`}
+                >
+                  <Icon className="w-6 h-6 text-white stroke-[2.5]" />
+                </div>
+                <span className="font-body text-[11px] font-bold text-ink-900 mt-1 tracking-tight">
+                  {item.label}
+                </span>
+              </Link>
+            );
+          }
 
           return (
             <Link
               key={item.href}
               href={item.href}
-              className={`flex flex-col items-center justify-center min-h-[48px] min-w-[56px] px-1 py-1 rounded-xl transition-all duration-150 select-none ${
-                item.isSpecial
-                  ? 'text-ink-900'
-                  : isActive
-                  ? 'text-ink-900 font-bold'
-                  : 'text-ink-500 hover:text-ink-900 font-medium'
+              className={`flex flex-col items-center justify-center min-h-[44px] min-w-[52px] px-1 py-1 rounded-xl transition-all ${
+                isActive ? 'text-ink-900' : 'text-ink-500 hover:text-ink-900'
               }`}
             >
               <div
-                className={`relative flex items-center justify-center ${
-                  item.isSpecial
-                    ? 'w-11 h-11 -mt-5 rounded-full bg-[#FF5C98] border-2 border-ink-900 text-ink-900 shadow-[2px_2px_0px_#121214] active:translate-y-0.5'
-                    : isActive
-                    ? 'w-8 h-8 rounded-full bg-[#D4F77C] border border-ink-900 flex items-center justify-center shadow-[1px_1px_0px_#121214]'
+                className={`w-7 h-7 rounded-full flex items-center justify-center transition-all ${
+                  isActive
+                    ? 'bg-[#D4F77C] border border-ink-900 shadow-[1px_1px_0px_#121214]'
                     : ''
                 }`}
               >
                 <Icon
-                  className={`${item.isSpecial ? 'w-5 h-5 text-white' : 'w-5 h-5'} ${
-                    isActive ? 'stroke-[2.5]' : 'stroke-[1.8]'
+                  className={`w-4 h-4 ${
+                    isActive ? 'text-ink-900 stroke-[2.5]' : 'text-ink-500 stroke-[2]'
                   }`}
                 />
               </div>
-              <span className={`font-mono text-[10px] mt-1 tracking-tight ${item.isSpecial ? 'font-bold text-ink-900' : ''}`}>
+              <span
+                className={`font-body text-[10px] tracking-tight mt-0.5 ${
+                  isActive ? 'font-bold text-ink-900' : 'font-medium text-ink-500'
+                }`}
+              >
                 {item.label}
               </span>
             </Link>

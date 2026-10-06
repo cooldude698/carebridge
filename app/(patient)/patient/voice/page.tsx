@@ -132,28 +132,29 @@ export default function VoiceLoggingPage() {
   };
 
   return (
-    <div className="min-h-screen bg-surface-50 text-navy-900 pb-28">
-      <PatientHeader
-        locale={locale}
-        onLocaleChange={handleLocaleChange}
-        showBack
-        backHref="/patient"
-        title="Voice Health Logger"
-      />
+    <div className="min-h-screen bg-[#F4F1EA] md:bg-[#EAE6DB] flex flex-col items-center">
+      <div className="w-full max-w-md min-h-screen bg-[#FAF8F5] text-ink-900 flex flex-col relative md:border-x-2 md:border-ink-900 md:shadow-[0_10px_35px_rgba(0,0,0,0.08)] pb-28 sm:pb-32">
+        <PatientHeader
+          locale={locale}
+          onLocaleChange={handleLocaleChange}
+          showBack
+          backHref="/patient"
+          title="Voice Health Logger"
+        />
 
-      <main className="max-w-md mx-auto px-4 pt-4 space-y-6">
+        <main className="w-full px-3.5 sm:px-4 pt-3.5 space-y-4 sm:space-y-5">
         {/* Intro Banner */}
-        <div className="text-center space-y-1">
-          <h2 className="font-display font-bold text-2xl text-navy-900">
+        <div className="text-center space-y-0.5">
+          <h2 className="font-display font-bold text-xl sm:text-2xl text-ink-900">
             Speak in your language
           </h2>
-          <p className="font-body text-sm text-gray-500">
+          <p className="font-body text-xs sm:text-sm text-ink-500 font-medium">
             Supports Hindi, Kannada, and Indian English
           </p>
         </div>
 
         {/* Central Voice Mic Button */}
-        <div className="py-6 flex justify-center">
+        <div className="py-3 flex justify-center">
           <VoiceButton
             isListening={isListening}
             onClick={handleMicToggle}
@@ -162,14 +163,14 @@ export default function VoiceLoggingPage() {
         </div>
 
         {/* Live Speech Recognition Transcript Box */}
-        <Card className="min-h-[110px] p-5 border-gray-200 bg-white flex flex-col justify-between shadow-card">
+        <div className="min-h-[110px] p-4 sm:p-5 bg-white rounded-[20px] border-2 border-ink-900 shadow-[3px_3px_0px_#121214] flex flex-col justify-between">
           <div className="space-y-1">
-            <span className="font-body text-xs font-semibold uppercase text-gray-400 tracking-wider">
+            <span className="font-body text-[11px] font-bold uppercase text-ink-500 tracking-wider block">
               {isListening ? 'Listening live...' : 'Recognized Speech'}
             </span>
-            <p className="font-display font-medium text-lg sm:text-xl text-navy-900 min-h-[32px]">
+            <p className="font-display font-semibold text-lg sm:text-xl text-ink-900 min-h-[36px] leading-snug">
               {activeText || (
-                <span className="text-gray-300 italic">
+                <span className="text-ink-400 font-body font-normal text-sm sm:text-base">
                   Tap the mic and say &quot;maine dawai le li&quot; or &quot;BP 130 by 85&quot;
                 </span>
               )}
@@ -177,35 +178,35 @@ export default function VoiceLoggingPage() {
           </div>
 
           {isListening && (
-            <div className="flex items-center gap-2 pt-2 text-xs text-teal-600 font-medium">
-              <span className="w-2 h-2 rounded-full bg-teal-500 animate-ping" />
-              <span>Speaking detected...</span>
+            <div className="flex items-center gap-2 pt-2 text-xs text-teal-700 font-bold">
+              <span className="w-2.5 h-2.5 rounded-full bg-teal-500 animate-ping" />
+              <span>Listening to voice...</span>
             </div>
           )}
-        </Card>
+        </div>
 
         {/* Intent Detection & Confirmation Card */}
         {detectedIntent && (
           <div className="animate-fadeIn transition-all duration-300">
             {detectedIntent.type === 'LOG_MED_TAKEN' && (
-              <Card className="p-5 border-emerald-200 bg-emerald-50/40 space-y-3">
+              <div className="p-4 sm:p-5 bg-[#DCFCE7] rounded-[20px] border-2 border-ink-900 shadow-[3px_3px_0px_#121214] space-y-3">
                 <div className="flex items-start gap-3">
-                  <div className="p-2.5 bg-emerald-100 text-emerald-700 rounded-xl">
-                    <Pill className="w-6 h-6" />
+                  <div className="p-2.5 bg-[#D4F77C] text-ink-900 border border-ink-900 rounded-xl">
+                    <Pill className="w-6 h-6 stroke-[2.5]" />
                   </div>
                   <div className="flex-1">
                     <div className="flex items-center justify-between">
-                      <span className="font-data text-xs font-bold uppercase text-emerald-800 tracking-wider">
+                      <span className="font-data text-xs font-bold uppercase text-emerald-900 tracking-wider">
                         Intent Detected
                       </span>
-                      <span className="font-data text-xs font-bold text-emerald-600">
+                      <span className="font-data text-xs font-bold bg-white px-2 py-0.5 rounded-full border border-ink-900 text-ink-900">
                         {Math.round(detectedIntent.confidence * 100)}% match
                       </span>
                     </div>
-                    <h3 className="font-display font-bold text-xl text-navy-900 mt-0.5">
+                    <h3 className="font-display font-bold text-lg sm:text-xl text-ink-900 mt-0.5">
                       Mark Medicine as Taken
                     </h3>
-                    <p className="font-body text-sm text-gray-600">
+                    <p className="font-body text-xs sm:text-sm text-ink-700 font-medium mt-0.5">
                       {detectedIntent.medicineName
                         ? `Medicine: ${detectedIntent.medicineName}`
                         : 'Scheduled dose (Metformin 500mg)'}
@@ -213,85 +214,81 @@ export default function VoiceLoggingPage() {
                   </div>
                 </div>
 
-                <Button
-                  variant="success"
-                  fullWidth
-                  size="lg"
-                  isLoading={isSubmitting}
+                <button
+                  type="button"
+                  disabled={isSubmitting}
                   onClick={handleConfirmIntent}
-                  className="mt-2 text-base font-bold min-h-[48px] flex items-center gap-2"
+                  className="w-full bg-[#D4F77C] hover:bg-[#CEF267] text-ink-900 font-display font-bold text-base min-h-[48px] rounded-xl border-2 border-ink-900 shadow-[2px_2px_0px_#121214] active:translate-y-0.5 flex items-center justify-center gap-2 transition-all cursor-pointer"
                 >
-                  <CheckCircle2 className="w-5 h-5" />
+                  <CheckCircle2 className="w-5 h-5 stroke-[2.5]" />
                   <span>Confirm & Save</span>
-                </Button>
-              </Card>
+                </button>
+              </div>
             )}
 
             {detectedIntent.type === 'LOG_BP' && (
-              <Card className="p-5 border-teal-200 bg-teal-50/40 space-y-3">
+              <div className="p-4 sm:p-5 bg-[#E6F9F7] rounded-[20px] border-2 border-ink-900 shadow-[3px_3px_0px_#121214] space-y-3">
                 <div className="flex items-start gap-3">
-                  <div className="p-2.5 bg-teal-100 text-teal-700 rounded-xl">
-                    <Heart className="w-6 h-6" />
+                  <div className="p-2.5 bg-[#FF5C98] text-white border border-ink-900 rounded-xl">
+                    <Heart className="w-6 h-6 stroke-[2.5]" />
                   </div>
                   <div className="flex-1">
                     <div className="flex items-center justify-between">
-                      <span className="font-data text-xs font-bold uppercase text-teal-800 tracking-wider">
+                      <span className="font-data text-xs font-bold uppercase text-teal-900 tracking-wider">
                         Intent Detected
                       </span>
-                      <span className="font-data text-xs font-bold text-teal-600">
+                      <span className="font-data text-xs font-bold bg-white px-2 py-0.5 rounded-full border border-ink-900 text-ink-900">
                         {Math.round(detectedIntent.confidence * 100)}% match
                       </span>
                     </div>
-                    <h3 className="font-display font-bold text-xl text-navy-900 mt-0.5">
+                    <h3 className="font-display font-bold text-lg sm:text-xl text-ink-900 mt-0.5">
                       Log Blood Pressure Reading
                     </h3>
-                    <p className="font-data font-bold text-2xl text-navy-900 mt-1">
+                    <p className="font-data font-bold text-xl sm:text-2xl text-ink-900 mt-1">
                       {detectedIntent.systolic} / {detectedIntent.diastolic}{' '}
-                      <span className="text-xs font-body font-normal text-gray-500">
+                      <span className="text-xs font-body font-normal text-ink-500">
                         mmHg
                       </span>
                     </p>
                   </div>
                 </div>
 
-                <Button
-                  variant="primary"
-                  fullWidth
-                  size="lg"
-                  isLoading={isSubmitting}
+                <button
+                  type="button"
+                  disabled={isSubmitting}
                   onClick={handleConfirmIntent}
-                  className="mt-2 text-base font-bold min-h-[48px] flex items-center gap-2"
+                  className="w-full bg-[#D4F77C] hover:bg-[#CEF267] text-ink-900 font-display font-bold text-base min-h-[48px] rounded-xl border-2 border-ink-900 shadow-[2px_2px_0px_#121214] active:translate-y-0.5 flex items-center justify-center gap-2 transition-all cursor-pointer"
                 >
-                  <CheckCircle2 className="w-5 h-5" />
+                  <CheckCircle2 className="w-5 h-5 stroke-[2.5]" />
                   <span>Confirm & Save</span>
-                </Button>
-              </Card>
+                </button>
+              </div>
             )}
 
             {detectedIntent.type === 'UNKNOWN' && (
-              <Card className="p-4 border-amber-200 bg-amber-50/40 flex items-start gap-3">
-                <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
-                <div className="text-xs text-amber-900 font-body">
+              <div className="p-3.5 bg-[#FEF3C7] rounded-[18px] border-2 border-ink-900 shadow-[2px_2px_0px_#121214] flex items-start gap-2.5">
+                <AlertCircle className="w-5 h-5 text-amber-700 shrink-0 mt-0.5" />
+                <div className="text-xs text-ink-900 font-body">
                   <p className="font-bold">Phrase not recognized as a health action</p>
-                  <p className="mt-0.5">
+                  <p className="mt-0.5 text-ink-700">
                     Try saying &quot;maine dawai le li&quot; or &quot;BP 130 by 85&quot;.
                   </p>
                 </div>
-              </Card>
+              </div>
             )}
           </div>
         )}
 
         {/* Demo Quick-Test Chips */}
-        <div className="pt-2 space-y-2">
-          <div className="flex items-center justify-between">
-            <span className="font-body text-xs font-bold text-gray-500 flex items-center gap-1">
-              <Sparkles className="w-3.5 h-3.5 text-teal-600" />
+        <div className="pt-1 space-y-2">
+          <div className="flex items-center justify-between px-0.5">
+            <span className="font-body text-xs font-bold text-ink-600 flex items-center gap-1">
+              <Sparkles className="w-3.5 h-3.5 text-ink-900" />
               Demo Quick-Click Phrases:
             </span>
             <button
               onClick={() => setShowTypedInput(!showTypedInput)}
-              className="text-xs font-display font-bold text-teal-600 hover:text-teal-700 flex items-center gap-1"
+              className="text-xs font-display font-bold text-ink-900 hover:text-teal-700 flex items-center gap-1 underline"
             >
               <Keyboard className="w-3.5 h-3.5" />
               {showTypedInput ? 'Hide typing' : 'Type manually'}
@@ -301,29 +298,29 @@ export default function VoiceLoggingPage() {
           <div className="flex flex-wrap gap-2">
             <button
               onClick={() => handleSamplePhrase('maine dawai le li')}
-              className="px-3 py-1.5 rounded-full bg-white border border-gray-200 font-body text-xs font-medium text-navy-900 hover:border-teal-500 hover:bg-teal-50 transition-all shadow-sm"
+              className="px-3.5 py-2 rounded-full bg-white border-2 border-ink-900 font-body text-xs font-bold text-ink-900 hover:bg-[#FAF8F5] shadow-[2px_2px_0px_#121214] active:translate-y-0.5 transition-all cursor-pointer"
             >
               &quot;maine dawai le li&quot; (Hindi)
             </button>
             <button
               onClick={() => handleSamplePhrase('medicine tiskondidini')}
-              className="px-3 py-1.5 rounded-full bg-white border border-gray-200 font-body text-xs font-medium text-navy-900 hover:border-teal-500 hover:bg-teal-50 transition-all shadow-sm"
+              className="px-3.5 py-2 rounded-full bg-white border-2 border-ink-900 font-body text-xs font-bold text-ink-900 hover:bg-[#FAF8F5] shadow-[2px_2px_0px_#121214] active:translate-y-0.5 transition-all cursor-pointer"
             >
               &quot;medicine tiskondidini&quot; (Kannada)
             </button>
             <button
               onClick={() => handleSamplePhrase('BP 138 by 88')}
-              className="px-3 py-1.5 rounded-full bg-white border border-gray-200 font-body text-xs font-medium text-navy-900 hover:border-teal-500 hover:bg-teal-50 transition-all shadow-sm"
+              className="px-3.5 py-2 rounded-full bg-white border-2 border-ink-900 font-body text-xs font-bold text-ink-900 hover:bg-[#FAF8F5] shadow-[2px_2px_0px_#121214] active:translate-y-0.5 transition-all cursor-pointer"
             >
               &quot;BP 138 by 88&quot; (Vitals)
             </button>
           </div>
         </div>
 
-        {/* Typed Input Fallback (for mic denied / offline) */}
+        {/* Typed Input Fallback */}
         {showTypedInput && (
-          <div className="p-4 bg-white rounded-2xl border border-gray-200 shadow-sm space-y-2">
-            <label className="block font-body text-xs font-semibold text-gray-600">
+          <div className="p-3.5 bg-white rounded-[18px] border-2 border-ink-900 shadow-[2px_2px_0px_#121214] space-y-2">
+            <label className="block font-body text-xs font-bold text-ink-700">
               Typed Input Fallback:
             </label>
             <div className="flex gap-2">
@@ -332,24 +329,24 @@ export default function VoiceLoggingPage() {
                 value={typedInput}
                 onChange={(e) => setTypedInput(e.target.value)}
                 placeholder="Type 'took my medicine' or 'BP 130 85'..."
-                className="flex-1 font-body text-sm px-3.5 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-teal-500"
+                className="flex-1 font-body text-sm px-3.5 py-2.5 rounded-xl border-2 border-ink-900 focus:outline-none focus:ring-2 focus:ring-ink-900"
               />
-              <Button
-                variant="primary"
-                size="sm"
+              <button
+                type="button"
                 onClick={() => {
                   const parsed = parseVoiceIntent(typedInput);
                   setDetectedIntent(parsed);
                 }}
+                className="px-4 py-2 bg-[#D4F77C] hover:bg-[#CEF267] text-ink-900 font-display font-bold text-xs rounded-xl border-2 border-ink-900 shadow-[1.5px_1.5px_0px_#121214] active:translate-y-0.5"
               >
                 Parse
-              </Button>
+              </button>
             </div>
           </div>
         )}
 
         {!isSupported && (
-          <p className="text-xs text-amber-700 bg-amber-50 p-2.5 rounded-xl border border-amber-200 text-center font-body">
+          <p className="text-xs text-ink-800 bg-[#FEF3C7] p-2.5 rounded-xl border-2 border-ink-900 text-center font-body font-semibold">
             Note: Speech recognition runs via Chrome Web Speech API. Use the quick-click buttons above if your browser mic is blocked.
           </p>
         )}
@@ -357,13 +354,14 @@ export default function VoiceLoggingPage() {
 
       {/* Success Notification */}
       {successMessage && (
-        <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-50 bg-emerald-700 text-white px-6 py-3.5 rounded-full shadow-lg flex items-center gap-2 font-display text-sm font-semibold animate-bounce">
-          <CheckCircle2 className="w-5 h-5 text-white" />
+        <div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-50 bg-ink-900 text-white px-5 py-3 rounded-full border-2 border-ink-900 shadow-[3px_3px_0px_#121214] flex items-center gap-2 font-display text-sm font-semibold animate-bounce">
+          <CheckCircle2 className="w-5 h-5 text-[#D4F77C]" />
           <span>{successMessage}</span>
         </div>
       )}
 
       <BottomNav locale={locale} />
+      </div>
     </div>
   );
 }

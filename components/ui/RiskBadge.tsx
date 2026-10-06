@@ -78,7 +78,7 @@ export const RiskBadge: React.FC<RiskBadgeProps> = ({
       aria-label={`${config.ariaLabel}${score !== undefined ? `, score ${score}` : ""}`}
       className={[
         "inline-flex items-center rounded-full border-2",
-        "font-mono font-bold uppercase select-none shadow-[1.5px_1.5px_0px_rgba(18,18,20,0.8)]",
+        "font-data font-bold uppercase select-none shadow-[1.5px_1.5px_0px_rgba(18,18,20,0.8)]",
         config.bgColor,
         config.textColor,
         config.borderColor,

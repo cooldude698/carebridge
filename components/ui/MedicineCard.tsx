@@ -60,62 +60,61 @@ export function MedicineCard({
   };
 
   return (
-    <Card
-      variant={isTaken ? "flat" : "default"}
-      className={`p-5 transition-all duration-200 ${
-        isTaken ? "opacity-90 border-[var(--risk-green-bg)]" : ""
+    <div
+      className={`bg-white rounded-[20px] border-2 border-ink-900 shadow-[3px_3px_0px_#121214] p-3.5 sm:p-4.5 transition-all duration-200 ${
+        isTaken ? "bg-emerald-50/40 border-emerald-600 shadow-[2px_2px_0px_#15803D]" : ""
       } ${className}`}
     >
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex items-center justify-between gap-3">
         {/* Medicine details */}
-        <div className="flex items-start gap-3.5">
+        <div className="flex items-center gap-3 min-w-0">
           <div
-            className={`w-11 h-11 rounded-[var(--r-md)] flex items-center justify-center shrink-0 ${
+            className={`w-10 h-10 rounded-xl border-2 border-ink-900 flex items-center justify-center shrink-0 ${
               isTaken
-                ? "bg-[var(--risk-green-bg)] text-[var(--risk-green)]"
+                ? "bg-[#DCFCE7] text-emerald-800 border-emerald-600"
                 : isMissed
-                ? "bg-[var(--risk-amber-bg)] text-[var(--risk-amber)]"
-                : "bg-[var(--surface-100)] text-[var(--brand-indigo)]"
+                ? "bg-[#FEF3C7] text-amber-800"
+                : "bg-[#EDE9FE] text-ink-900"
             }`}
             aria-hidden="true"
           >
             {isTaken ? (
-              <Check className="w-6 h-6 stroke-[2.5]" />
+              <Check className="w-5 h-5 stroke-[2.5]" />
             ) : isMissed ? (
-              <AlertCircle className="w-6 h-6 stroke-[2.2]" />
+              <AlertCircle className="w-5 h-5 stroke-[2.2]" />
             ) : (
-              <Pill className="w-6 h-6 stroke-[2]" />
+              <Pill className="w-5 h-5 stroke-[2.2]" />
             )}
           </div>
 
-          <div>
-            <div className="flex items-center gap-2 flex-wrap">
-              <h3 className="font-display font-bold text-lg text-[var(--ink-900)] leading-tight">
+          <div className="min-w-0">
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <h3 className="font-display font-bold text-base sm:text-lg text-ink-900 leading-tight truncate">
                 {name}
               </h3>
-              <span className="font-body text-sm text-[var(--ink-500)] font-medium">
-                ({dose})
+              <span className="font-data text-[11px] text-ink-700 bg-[#FAF8F5] border border-ink-300 px-2 py-0.5 rounded-full font-bold shrink-0">
+                {dose}
               </span>
             </div>
 
-            <div className="flex items-center gap-2 mt-1 text-sm text-[var(--ink-500)] font-body">
-              <Clock className="w-4 h-4 text-[var(--ink-300)]" aria-hidden="true" />
-              <span className="font-data font-semibold text-[var(--ink-700)]">
+            <div className="flex items-center gap-1.5 mt-0.5 text-xs text-ink-600 font-body">
+              <Clock className="w-3.5 h-3.5 text-ink-500 shrink-0" aria-hidden="true" />
+              <span className="font-data font-bold text-ink-800">
                 {time}
               </span>
               <span>•</span>
-              <span>{instructions}</span>
+              <span className="truncate">{instructions}</span>
             </div>
 
             {isTaken && takenAt && (
-              <p className="font-body text-xs text-[var(--risk-green)] font-medium mt-1">
-                ✓ Logged as taken at {takenAt}
+              <p className="font-body text-[11px] text-emerald-700 font-bold mt-0.5">
+                ✓ Logged at {takenAt}
               </p>
             )}
 
             {isMissed && (
-              <p className="font-body text-xs text-[var(--risk-amber)] font-medium mt-1">
-                ⚠️ Scheduled dose was missed
+              <p className="font-body text-[11px] text-amber-700 font-bold mt-0.5">
+                ⚠️ Scheduled dose missed
               </p>
             )}
           </div>
@@ -124,35 +123,34 @@ export function MedicineCard({
         {/* Action Button */}
         <div className="shrink-0 flex items-center">
           {isTaken ? (
-            <div className="flex items-center gap-2">
-              <span className="font-data text-xs font-bold uppercase tracking-wider text-[var(--risk-green)] bg-[var(--risk-green-bg)] px-3 py-1.5 rounded-[var(--r-pill)]">
-                Taken
+            <div className="flex items-center gap-1.5">
+              <span className="font-data text-xs font-bold uppercase tracking-wider text-emerald-900 bg-[#DCFCE7] border border-emerald-600 px-3 py-1.5 rounded-xl shadow-[1px_1px_0px_#15803D]">
+                Taken ✓
               </span>
               {onUndo && (
                 <button
                   type="button"
                   onClick={onUndo}
-                  className="font-body text-xs text-[var(--ink-500)] hover:text-[var(--ink-700)] underline ml-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-teal)] rounded"
+                  className="font-body text-xs text-ink-500 hover:text-ink-900 underline ml-0.5 cursor-pointer"
                 >
                   Undo
                 </button>
               )}
             </div>
           ) : (
-            <Button
-              variant="primary"
-              size="md"
-              loading={isBusy}
+            <button
+              type="button"
+              disabled={isBusy}
               onClick={handleTake}
-              className="min-w-[110px] min-h-[48px] shadow-sm"
+              className="bg-[#D4F77C] hover:bg-[#CEF267] text-ink-900 font-display font-bold text-xs sm:text-sm px-3.5 sm:px-4 py-2 min-h-[42px] rounded-xl border-2 border-ink-900 shadow-[2px_2px_0px_#121214] active:translate-y-0.5 flex items-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
               aria-label={`Mark ${name} ${dose} as taken`}
             >
-              <Check className="w-5 h-5 stroke-[2.5]" />
-              Taken
-            </Button>
+              <Check className="w-4 h-4 stroke-[2.5]" />
+              <span>Taken</span>
+            </button>
           )}
         </div>
       </div>
-    </Card>
+    </div>
   );
 }

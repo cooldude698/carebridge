@@ -63,9 +63,9 @@ export const PatientListPane: React.FC = () => {
       {/* Top Controls: Search & Refresh */}
       <div className="p-4 border-b-2 border-ink-900 space-y-3 bg-[#FAF8F5]">
         <div className="flex items-center justify-between">
-          <h3 className="font-serif font-black text-ink-900 text-sm flex items-center gap-1.5">
+          <h3 className="font-display font-bold text-ink-900 text-sm flex items-center gap-1.5">
             <span>Risk-Ranked Action List</span>
-            <span className="font-mono text-[11px] font-bold px-2 py-0.5 rounded-full bg-[#EDE9FE] border border-ink-900 text-ink-900">
+            <span className="font-data text-[11px] font-bold px-2 py-0.5 rounded-full bg-[#EDE9FE] border border-ink-900 text-ink-900">
               {filteredPatients.length}
             </span>
           </h3>
@@ -88,12 +88,12 @@ export const PatientListPane: React.FC = () => {
             placeholder="Search patient, condition, flag..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-9 pr-3 py-2 bg-white border-2 border-ink-900 rounded-xl text-xs font-mono text-ink-900 placeholder:text-ink-400 focus:outline-none focus:bg-[#FAF8F5] shadow-[2px_2px_0px_#121214]"
+            className="w-full pl-9 pr-3 py-2 bg-white border-2 border-ink-900 rounded-xl text-xs font-body text-ink-900 placeholder:text-ink-400 focus:outline-none focus:bg-[#FAF8F5] shadow-[2px_2px_0px_#121214]"
           />
         </div>
 
         {/* Filters */}
-        <div className="flex items-center gap-1.5 text-xs font-mono">
+        <div className="flex items-center gap-1.5 text-xs font-data">
           <Filter className="w-3 h-3 text-ink-500 mr-0.5 shrink-0" />
           {(["all", "red", "yellow", "green"] as const).map((b) => (
             <button
@@ -114,7 +114,7 @@ export const PatientListPane: React.FC = () => {
       {/* Patient Rows List */}
       <div className="flex-1 overflow-y-auto p-3 space-y-2 bg-[#FBF9F4]">
         {filteredPatients.length === 0 ? (
-          <div className="p-8 text-center text-xs font-mono text-ink-500">
+          <div className="p-8 text-center text-xs font-body text-ink-500">
             No patients match current filter
           </div>
         ) : (

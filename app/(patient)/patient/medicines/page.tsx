@@ -67,51 +67,52 @@ export default function PatientMedicinesPage() {
   const totalCount = medLogs.length;
 
   return (
-    <div className="min-h-screen bg-surface-50 text-navy-900 pb-28">
-      <PatientHeader
-        locale={locale}
-        onLocaleChange={handleLocaleChange}
-        showBack
-        backHref="/patient"
-        title={t('nav_medicines', locale)}
-      />
+    <div className="min-h-screen bg-[#F4F1EA] md:bg-[#EAE6DB] flex flex-col items-center">
+      <div className="w-full max-w-md min-h-screen bg-[#FAF8F5] text-ink-900 flex flex-col relative md:border-x-2 md:border-ink-900 md:shadow-[0_10px_35px_rgba(0,0,0,0.08)] pb-28 sm:pb-32">
+        <PatientHeader
+          locale={locale}
+          onLocaleChange={handleLocaleChange}
+          showBack
+          backHref="/patient"
+          title={t('nav_medicines', locale)}
+        />
 
-      <main className="max-w-md mx-auto px-4 pt-4 space-y-4">
+        <main className="w-full px-3.5 sm:px-4 pt-3.5 space-y-4">
         {/* Progress Tracker Card */}
-        <Card className="bg-gradient-to-r from-teal-600 to-teal-700 text-white p-5">
+        <div className="bg-ink-900 text-white p-4.5 sm:p-5 rounded-[20px] border-2 border-ink-900 shadow-[4px_4px_0px_#121214]">
           <div className="flex items-center justify-between">
             <div>
-              <p className="font-body text-xs text-teal-100 uppercase tracking-wider font-semibold">
+              <p className="font-body text-xs text-[#D4F77C] uppercase tracking-wider font-bold">
                 Today&apos;s Adherence
               </p>
               <h2 className="font-display font-bold text-2xl text-white mt-0.5">
                 {takenCount} of {totalCount} Taken
               </h2>
             </div>
-            <div className="p-3 bg-white/10 rounded-2xl">
-              <Pill className="w-8 h-8 text-white" />
+            <div className="p-2.5 bg-[#FF5C98] rounded-xl border border-ink-900">
+              <Pill className="w-7 h-7 text-white stroke-[2.5]" />
             </div>
           </div>
 
-          <div className="w-full bg-white/20 h-2 rounded-full mt-4 overflow-hidden">
+          <div className="w-full bg-white/20 h-2.5 rounded-full mt-3.5 overflow-hidden border border-white/10">
             <div
-              className="bg-white h-full rounded-full transition-all duration-500"
+              className="bg-[#D4F77C] h-full rounded-full transition-all duration-500"
               style={{ width: `${(takenCount / totalCount) * 100}%` }}
             />
           </div>
-        </Card>
+        </div>
 
         {/* Voice Logging Hint */}
-        <div className="bg-indigo-50 border border-indigo-100 rounded-2xl p-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-indigo-600 text-white rounded-xl">
-              <Mic className="w-5 h-5" />
+        <div className="bg-[#E6F9F7] border-2 border-ink-900 rounded-[18px] p-3.5 shadow-[2px_2px_0px_#121214] flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <div className="p-2 bg-[#D4F77C] text-ink-900 border border-ink-900 rounded-xl">
+              <Mic className="w-4 h-4 stroke-[2.5]" />
             </div>
             <div>
-              <p className="font-display font-bold text-sm text-navy-900">
+              <p className="font-display font-bold text-sm text-ink-900">
                 Log with your voice
               </p>
-              <p className="font-body text-xs text-gray-600">
+              <p className="font-body text-xs text-ink-600 font-medium">
                 {t('voice_hint', locale)}
               </p>
             </div>
@@ -119,8 +120,8 @@ export default function PatientMedicinesPage() {
         </div>
 
         {/* Medicines List */}
-        <div className="space-y-3">
-          <h3 className="font-display font-bold text-lg text-navy-900">
+        <div className="space-y-2.5">
+          <h3 className="font-display font-bold text-lg text-ink-900 px-0.5">
             Daily Schedule
           </h3>
 
@@ -145,20 +146,21 @@ export default function PatientMedicinesPage() {
         </div>
 
         {/* Disclaimer */}
-        <p className="font-body text-xs text-gray-500 text-center pt-2">
+        <p className="font-body text-xs text-ink-500 text-center pt-2">
           {t('decision_support_note', locale)}
         </p>
       </main>
 
       {/* Toast */}
       {toastMessage && (
-        <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-50 bg-navy-900 text-white px-5 py-3 rounded-full shadow-lg flex items-center gap-2 font-display text-sm font-semibold animate-bounce">
-          <CheckCircle2 className="w-5 h-5 text-teal-400" />
+        <div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-50 bg-ink-900 text-white px-5 py-3 rounded-full border-2 border-ink-900 shadow-[3px_3px_0px_#121214] flex items-center gap-2 font-display text-sm font-semibold animate-bounce">
+          <CheckCircle2 className="w-5 h-5 text-[#D4F77C]" />
           <span>{toastMessage}</span>
         </div>
       )}
 
       <BottomNav locale={locale} />
+      </div>
     </div>
   );
 }

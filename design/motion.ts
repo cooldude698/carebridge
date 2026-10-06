@@ -12,49 +12,62 @@
 
 import type { Variants, Transition } from "framer-motion";
 
-/** Standard 200ms ease-out transition */
+const isReducedMotion = (): boolean => {
+  if (typeof window === "undefined") return false;
+  return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+};
+
+/** Standard transition respecting prefers-reduced-motion */
 export const defaultTransition: Transition = {
-  duration: 0.2,
+  duration: isReducedMotion() ? 0 : 0.2,
   ease: [0.16, 1, 0.3, 1], // ease-out quad/cubic
 };
 
 /** Risk badge swap animation: quick scale pop + color fade */
-export const badgeSwapVariants: Variants = {
+export const riskBadgeSwap: Variants = {
   initial: {
-    scale: 0.88,
-    opacity: 0.6,
+    scale: 0.9,
+    opacity: 0.7,
   },
   animate: {
     scale: 1,
     opacity: 1,
     transition: {
-      duration: 0.2,
-      ease: [0.16, 1, 0.3, 1],
+      duration: isReducedMotion() ? 0 : 0.18,
+      ease: "easeOut",
     },
   },
   exit: {
     scale: 0.9,
     opacity: 0,
     transition: {
-      duration: 0.15,
+      duration: isReducedMotion() ? 0 : 0.12,
     },
   },
 };
 
-/** Continuous pulsing wave rings for VoiceButton while listening */
-export const micPulseVariants: Variants = {
-  initial: {
-    scale: 1,
-    opacity: 0.7,
-  },
-  pulse: {
-    scale: [1, 1.25, 1.45],
-    opacity: [0.6, 0.3, 0],
+export const badgeSwapVariants: Variants = riskBadgeSwap;
+
+/** Continuous gentle mic pulse for VoiceButton listening */
+export const micPulse: Variants = {
+  animate: {
+    scale: [1, 1.08, 1],
     transition: {
-      duration: 1.6,
       repeat: Infinity,
-      ease: "easeOut",
+      duration: isReducedMotion() ? 0 : 0.9,
+      ease: "easeInOut",
     },
+  },
+};
+
+export const micPulseVariants: Variants = micPulse;
+
+/** FLIP transition layout settings for PatientRow list sliding */
+export const listSlide = {
+  layout: true,
+  transition: {
+    duration: isReducedMotion() ? 0 : 0.22,
+    ease: "easeOut",
   },
 };
 

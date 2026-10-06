@@ -20,6 +20,8 @@ import {
   SimEventResponse,
   DoctorNote,
   PatientGoal,
+  GoalsResponse,
+  DoctorNoteReminder,
 } from "@/lib/types";
 import { computeRisk } from "@/lib/risk/compute";
 
@@ -285,12 +287,30 @@ function createInitialState(): CareBridgeState {
 
   const alerts: Alert[] = [
     {
+      id: "alt-doc-1",
+      patient_id: "p1",
+      level: "doctor_note",
+      audience: "family",
+      message: "Dr. Rao has updated the care plan.",
+      created_at: new Date(now - 30 * 60 * 1000).toISOString(),
+      acknowledged_at: null,
+    },
+    {
+      id: "alt-wearable-1",
+      patient_id: "p1",
+      level: "wearable_anomaly",
+      audience: "family",
+      message: "Ramesh ji's heart rate was a bit high during sleep.",
+      created_at: new Date(now - 60 * 60 * 1000).toISOString(),
+      acknowledged_at: null,
+    },
+    {
       id: "alt-1",
       patient_id: "p1",
       level: "reminder",
       audience: "patient",
       message: "Time for morning Metformin (500mg)",
-      created_at: new Date(now - 60 * 60 * 1000).toISOString(),
+      created_at: new Date(now - 90 * 60 * 1000).toISOString(),
       acknowledged_at: null,
     },
     {
@@ -354,8 +374,50 @@ function createInitialState(): CareBridgeState {
   const briefs: Brief[] = [];
   const doctorActions: CareBridgeState["doctorActions"] = [];
   const missedDoseEscalations: CareBridgeState["missedDoseEscalations"] = {};
-  const doctorNotes: DoctorNote[] = [];
-  const patientGoals: PatientGoal[] = [];
+
+  const doctorNotes: DoctorNote[] = [
+    {
+      id: "dn-1",
+      patient_id: "p1",
+      doctor_id: "d1",
+      note_text: "Increase morning walk to 20 min. Check BP every 3 days. Review in 2 weeks.",
+      parsed_instructions: {
+        reminders: [
+          { medicine: "Metformin 500mg", time: "08:00 AM", instruction: "Take with breakfast" },
+          { medicine: "Amlodipine 5mg", time: "08:00 PM", instruction: "Take after dinner" },
+        ],
+        goals: [
+          { category: "steps", target: "Walk 20 mins every morning", by: "Next Monday" },
+          { category: "bp", target: "Check BP every 3 days before breakfast", by: "Ongoing" },
+        ],
+        followUpDate: "Oct 20, 2026",
+      },
+      created_at: new Date(now - 1 * dayMs).toISOString(),
+    },
+  ];
+
+  const patientGoals: PatientGoal[] = [
+    {
+      id: "g-1",
+      patient_id: "p1",
+      category: "steps",
+      target: "Walk 20 mins every morning",
+      by_date: "Next Monday",
+      source_note_id: "dn-1",
+      completed_at: null,
+      created_at: new Date(now - 1 * dayMs).toISOString(),
+    },
+    {
+      id: "g-2",
+      patient_id: "p1",
+      category: "bp",
+      target: "Check BP every 3 days before breakfast",
+      by_date: "Ongoing",
+      source_note_id: "dn-1",
+      completed_at: null,
+      created_at: new Date(now - 1 * dayMs).toISOString(),
+    },
+  ];
 
   const state: CareBridgeState = {
     patients,
@@ -642,7 +704,39 @@ class CareBridgeStore {
     const takenToday = patientLogs.filter((m) => m.status === "taken").length;
     const totalToday = Math.max(takenToday, 2);
 
-    const alerts = this.state.alerts.filter((a) => a.patient_id === patientId);
+    const alerts = [
+      ...this.state.alerts.filter((a) => a.patient_id === patientId || (a as any).patientId === patientId),
+    ];
+
+    // Ensure doctor note alert is represented in feed if latest note exists
+    const latestNote = this.state.doctorNotes.find((n) => n.patient_id === patientId || (n as any).patientId === patientId);
+    if (latestNote && !alerts.some((a) => a.level === "doctor_note")) {
+      alerts.unshift({
+        id: `feed-doc-${latestNote.id}`,
+        patient_id: patientId,
+        level: "doctor_note",
+        audience: "family",
+        message: "Dr. Rao has updated the care plan.",
+        created_at: latestNote.created_at,
+        acknowledged_at: null,
+      });
+    }
+
+    // Check for wearable anomaly flags (e.g. nocturnal HR spike or steps drop)
+    const hasHrSpike = this.state.vitals.some(
+      (v) => (v.patient_id === patientId || (v as any).patientId === patientId) && v.type === "hr" && (v.value_a || 0) > 95
+    );
+    if (hasHrSpike && !alerts.some((a) => a.level === "wearable_anomaly")) {
+      alerts.unshift({
+        id: `feed-wearable-hr-${Date.now()}`,
+        patient_id: patientId,
+        level: "wearable_anomaly",
+        audience: "family",
+        message: "Ramesh ji's heart rate was a bit high during sleep.",
+        created_at: new Date(Date.now() - 30 * 60 * 1000).toISOString(),
+        acknowledged_at: null,
+      });
+    }
 
     return {
       patient: {
@@ -912,9 +1006,9 @@ class CareBridgeStore {
     this.state.alerts.unshift({
       id: `alt-plan-${Date.now()}`,
       patient_id: patientId,
-      level: "reminder",
-      audience: "patient",
-      message: "Dr. Rao updated your care plan. Tap to review.",
+      level: "doctor_note",
+      audience: "family",
+      message: "Dr. Rao has updated the care plan.",
       created_at: new Date().toISOString(),
       acknowledged_at: null,
     });
@@ -923,19 +1017,19 @@ class CareBridgeStore {
   }
 
   public getPatientGoals(patientId: string): { goals: PatientGoal[]; latestNote: DoctorNote | null } {
-    const goals = this.state.patientGoals
+    const goals = (this.state.patientGoals || [])
       .filter((g) => g.patient_id === patientId)
       .sort((a, b) => {
         if (!a.completed_at && b.completed_at) return -1;
         if (a.completed_at && !b.completed_at) return 1;
         return (a.by_date || "").localeCompare(b.by_date || "");
       });
-    const latestNote = this.state.doctorNotes.find((n) => n.patient_id === patientId) || null;
+    const latestNote = (this.state.doctorNotes || []).find((n) => n.patient_id === patientId) || null;
     return { goals, latestNote };
   }
 
   public completePatientGoal(patientId: string, goalId: string): { completedAt: string } | null {
-    const goal = this.state.patientGoals.find((g) => g.id === goalId && g.patient_id === patientId);
+    const goal = (this.state.patientGoals || []).find((g) => g.id === goalId && g.patient_id === patientId);
     if (!goal) return null;
     const completedAt = new Date().toISOString();
     goal.completed_at = completedAt;
@@ -964,9 +1058,16 @@ class CareBridgeStore {
 }
 
 // Global variable so state persists across hot module reloads in Next.js development
-const globalForStore = globalThis as unknown as { careBridgeStore?: CareBridgeStore };
+const globalForStore = globalThis as unknown as { careBridgeStore?: CareBridgeStore; careBridgeStoreVersion?: number };
+const STORE_VERSION = 4;
 
-export const store = globalForStore.careBridgeStore ?? new CareBridgeStore();
-if (process.env.NODE_ENV !== "production") {
-  globalForStore.careBridgeStore = store;
+if (
+  !globalForStore.careBridgeStore ||
+  globalForStore.careBridgeStoreVersion !== STORE_VERSION ||
+  typeof (globalForStore.careBridgeStore as any).getPatientGoals !== "function"
+) {
+  globalForStore.careBridgeStore = new CareBridgeStore();
+  globalForStore.careBridgeStoreVersion = STORE_VERSION;
 }
+
+export const store = globalForStore.careBridgeStore;

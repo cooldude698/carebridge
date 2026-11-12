@@ -356,11 +356,11 @@ Checklist:
 
 ## Daily Verification Matrix for Vedesh
 
-- [ ] Config duplicates cleaned; `npm run lint && npm run build` green.
-- [ ] `lib/types.ts` frozen & imported across all portals with zero local type duplication.
-- [ ] `supabase/schema.sql` (`TEXT` keys) & `supabase/rls.sql` cleanly support all 22 tables & 7 vital types.
-- [ ] `lib/wearable/ingester.ts` & `processor.ts` free of hardcoded fake numbers; every `AnomalyFlag.readingId` maps to a real vital row.
-- [ ] `POST /api/wearables/ingest` deduplicates, updates risk, triggers diagnosis & WhatsApp log.
-- [ ] `POST /api/patients/[id]/prescriptions` performs atomic closed-loop sync (`prescriptions`, `medicines`, `med_logs`, `patient_goals`, `watch_sync_payload`, `alerts`, `whatsapp_notifications`).
-- [ ] `POST /api/ai/ask` streams personalized food/vitamin/sugar/cholesterol/disease guidance via local Ollama `llama3.2` with seamless offline fallback.
-- [ ] `GET /api/patients/[id]/fhir` exports live ABDM HL7 FHIR R4 Bundle (`Patient`, `Condition`, `Observation`, `MedicationRequest`).
+- [x] Config duplicates cleaned; `npm run lint && npm run build` green.
+- [x] `lib/types.ts` frozen & imported across all portals with zero local type duplication.
+- [x] `supabase/schema.sql` (`TEXT` keys) & `supabase/rls.sql` cleanly support all 22 tables & 7 vital types.
+- [x] `lib/wearable/ingester.ts` & `processor.ts` free of hardcoded fake numbers; every `AnomalyFlag.readingId` maps to a real vital row.
+- [x] `POST /api/wearables/ingest` deduplicates, updates risk, triggers diagnosis & WhatsApp log.
+- [x] `POST /api/patients/[id]/prescriptions` performs atomic closed-loop sync (`prescriptions`, `medicines`, `med_logs`, `patient_goals`, `watch_sync_payload`, `alerts`, `whatsapp_notifications`).
+- [x] `POST /api/ai/ask` streams personalized food/vitamin/sugar/cholesterol/disease guidance via local Ollama `llama3.2` with seamless offline fallback.
+- [x] `GET /api/patients/[id]/fhir` exports live ABDM HL7 FHIR R4 Bundle (`Patient`, `Condition`, `Observation`, `MedicationRequest`).

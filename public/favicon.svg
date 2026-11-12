@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <!-- Neo-Brutalist Tactile Drop Shadow -->
+  <rect x="6" y="6" width="52" height="52" rx="14" fill="#121214" />
+  
+  <!-- Vibrant Fluorescent Lime Face -->
+  <rect x="3" y="3" width="52" height="52" rx="14" fill="#D4F77C" stroke="#121214" stroke-width="3" />
+
+  <!-- Bridge Horizontal Deck -->
+  <line x1="9" y1="46" x2="49" y2="46" stroke="#121214" stroke-width="3.5" stroke-linecap="round" />
+
+  <!-- Bridge Vertical Piers -->
+  <line x1="13" y1="46" x2="13" y2="50" stroke="#121214" stroke-width="3" stroke-linecap="round" />
+  <line x1="45" y1="46" x2="45" y2="50" stroke="#121214" stroke-width="3" stroke-linecap="round" />
+
+  <!-- Bridge Suspension Cables -->
+  <line x1="21" y1="33" x2="21" y2="46" stroke="#121214" stroke-width="2.5" stroke-linecap="round" />
+  <line x1="37" y1="33" x2="37" y2="46" stroke="#121214" stroke-width="2.5" stroke-linecap="round" />
+
+  <!-- Bridge Suspension Arch -->
+  <path d="M 13 46 C 13 29, 45 29, 45 46" fill="none" stroke="#121214" stroke-width="3.5" stroke-linecap="round" />
+
+  <!-- Care Daisy Bloom (6 Petals at 60-degree increments) -->
+  <g transform="translate(29, 21.5)">
+    <!-- Petals -->
+    <circle cx="0" cy="-7.5" r="3.5" fill="#FFFFFF" stroke="#121214" stroke-width="1.8" />
+    <circle cx="6.5" cy="-3.75" r="3.5" fill="#FFFFFF" stroke="#121214" stroke-width="1.8" />
+    <circle cx="6.5" cy="3.75" r="3.5" fill="#FFFFFF" stroke="#121214" stroke-width="1.8" />
+    <circle cx="0" cy="7.5" r="3.5" fill="#FFFFFF" stroke="#121214" stroke-width="1.8" />
+    <circle cx="-6.5" cy="3.75" r="3.5" fill="#FFFFFF" stroke="#121214" stroke-width="1.8" />
+    <circle cx="-6.5" cy="-3.75" r="3.5" fill="#FFFFFF" stroke="#121214" stroke-width="1.8" />
+
+    <!-- Center Warm Core -->
+    <circle cx="0" cy="0" r="4.8" fill="#FEE159" stroke="#121214" stroke-width="2.2" />
+    <!-- Light Reflection Specular -->
+    <circle cx="-1.2" cy="-1.2" r="1.2" fill="#FFFFFF" />
+  </g>
+</svg>

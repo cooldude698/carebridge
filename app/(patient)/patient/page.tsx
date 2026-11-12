@@ -1,125 +1,117 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import {
-  Footprints,
-  Pill,
-  Heart,
   Activity,
-  Droplets,
   ArrowRight,
   CheckCircle2,
-  Mic,
+  Droplets,
+  Flame,
+  Footprints,
+  Heart,
   Loader2,
+  Mic,
+  Phone,
+  Pill,
+  RefreshCw,
+  Stethoscope,
+  Watch,
+  Wind,
 } from 'lucide-react';
-import {
-  StatTile,
-  MedicineCard,
-  Card,
-  DoctorNoteCard,
-} from '@/components/ui';
 import { PatientHeader } from '@/components/patient/PatientHeader';
 import { BottomNav } from '@/components/patient/BottomNav';
-import { Locale, t } from '@/lib/i18n';
+import { WatchSyncPill } from '@/components/patient/WatchSyncPill';
+import { PatientDiagnosisCard } from '@/components/patient/PatientDiagnosisCard';
+import { PatientGoalCard } from '@/components/patient/PatientGoalCard';
+import { PatientToast } from '@/components/patient/PatientToast';
+import { usePatientLocale } from '@/components/patient/usePatientLocale';
+import { t } from '@/lib/i18n';
 import {
-  HERO_PATIENT,
-  SEED_MEDICINES,
-  INITIAL_MED_LOGS,
-  INITIAL_VITALS,
-} from '@/lib/mockData';
-import {
-  Medicine,
-  MedLog,
-  Vital,
-  WearableContext,
+  DiagnosisReport,
   GoalsResponse,
+  MedLog,
+  PatientDetail,
+  Prescription,
 } from '@/lib/types';
-import { resolveWearableContext } from '@/lib/wearable/resolve';
+
+const PATIENT_ID = 'p1';
 
 export default function PatientHomePage() {
-  const [locale, setLocale] = useState<Locale>('hi'); // Default Hindi for Ramesh hero scenario
-  const [medicines] = useState<Medicine[]>(SEED_MEDICINES);
-  const [medLogs, setMedLogs] = useState<MedLog[]>(INITIAL_MED_LOGS);
-  const [vitals] = useState<Vital[]>(INITIAL_VITALS);
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const { locale, changeLocale } = usePatientLocale('en');
 
-  // Wearable & Doctor Notes State (Phase 4)
-  const [wearable, setWearable] = useState<WearableContext | null>(null);
+  const [detail, setDetail] = useState<PatientDetail | null>(null);
+  const [prescriptions, setPrescriptions] = useState<Prescription[]>([]);
+  const [reports, setReports] = useState<DiagnosisReport[]>([]);
   const [goalsData, setGoalsData] = useState<GoalsResponse>({
     goals: [],
     latestNote: null,
   });
+
+  const [isInitialLoading, setIsInitialLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [isLoggingMed, setIsLoggingMed] = useState(false);
   const [acknowledgedFlags, setAcknowledgedFlags] = useState<Record<string, boolean>>({});
   const [isSendingFlag, setIsSendingFlag] = useState<Record<string, boolean>>({});
+  const [toast, setToast] = useState<{ message: string; type?: 'success' | 'error' } | null>(null);
 
-  // Load language preference from localStorage
-  useEffect(() => {
+  const showToast = useCallback((message: string, type: 'success' | 'error' = 'success') => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 3500);
+  }, []);
+
+  const loadAll = useCallback(async () => {
     try {
-      const savedLocale = localStorage.getItem('carebridge_locale') as Locale;
-      if (savedLocale && ['en', 'hi', 'kn'].includes(savedLocale)) {
-        setLocale(savedLocale);
+      const [pRes, rxRes, diagRes, gRes] = await Promise.all([
+        fetch(`/api/patients/${PATIENT_ID}?actor=patient`, { cache: 'no-store' }),
+        fetch(`/api/patients/${PATIENT_ID}/prescriptions`, { cache: 'no-store' }),
+        fetch(`/api/patients/${PATIENT_ID}/diagnosis`, { cache: 'no-store' }),
+        fetch(`/api/patients/${PATIENT_ID}/goals`, { cache: 'no-store' }),
+      ]);
+
+      if (!pRes.ok) throw new Error('Unable to load patient telemetry');
+      setLoadError(null);
+      const pJson = (await pRes.json()) as PatientDetail;
+      setDetail(pJson);
+
+      if (rxRes.ok) {
+        const rxJson = (await rxRes.json()) as Prescription[];
+        setPrescriptions(Array.isArray(rxJson) ? rxJson : []);
+      } else if (pJson.activePrescriptions) {
+        setPrescriptions(pJson.activePrescriptions);
+      }
+
+      if (diagRes.ok) {
+        const dJson = (await diagRes.json()) as DiagnosisReport[];
+        setReports(Array.isArray(dJson) ? dJson : []);
+      } else if (pJson.latestDiagnosis) {
+        setReports([pJson.latestDiagnosis]);
+      }
+
+      if (gRes.ok) {
+        const gJson = (await gRes.json()) as GoalsResponse;
+        setGoalsData(gJson);
       }
     } catch {
-      // ignore
+      setLoadError('Could not refresh live clinic data. Tap Retry to try again.');
+    } finally {
+      setIsInitialLoading(false);
     }
   }, []);
 
-  // Fetch patient wearable & goals
   useEffect(() => {
-    let mounted = true;
-
-    async function loadData() {
-      // 1. Fetch patient detail & wearable
-      try {
-        const pRes = await fetch(`/api/patients/${HERO_PATIENT.id}?actor=patient`);
-        if (pRes.ok) {
-          const pData = await pRes.json();
-          if (mounted) {
-            setWearable(resolveWearableContext(HERO_PATIENT.id, pData?.wearable));
-          }
-        } else {
-          if (mounted) {
-            setWearable(resolveWearableContext(HERO_PATIENT.id, null));
-          }
-        }
-      } catch {
-        if (mounted) {
-          setWearable(resolveWearableContext(HERO_PATIENT.id, null));
-        }
-      }
-
-      // 2. Fetch goals & latest doctor note
-      try {
-        const gRes = await fetch(`/api/patients/${HERO_PATIENT.id}/goals`);
-        if (gRes.ok) {
-          const gData = await gRes.json();
-          if (mounted) {
-            setGoalsData(gData);
-          }
-        }
-      } catch {
-        // Fallback handled gracefully
-      }
-    }
-
-    loadData();
+    const kickOff = setTimeout(() => {
+      void loadAll();
+    }, 0);
+    const timer = setInterval(() => {
+      void loadAll();
+    }, 8000);
     return () => {
-      mounted = false;
+      clearTimeout(kickOff);
+      clearInterval(timer);
     };
-  }, []);
+  }, [loadAll]);
 
-  const handleLocaleChange = (newLocale: Locale) => {
-    setLocale(newLocale);
-    try {
-      localStorage.setItem('carebridge_locale', newLocale);
-    } catch {
-      // ignore
-    }
-  };
-
-  // Determine greeting based on time of day
   const getGreeting = () => {
     const hour = new Date().getHours();
     if (hour < 12) return t('greeting_morning', locale);
@@ -127,346 +119,411 @@ export default function PatientHomePage() {
     return t('greeting_evening', locale);
   };
 
-  // Find next pending medicine
-  const pendingLogs = medLogs.filter((l) => l.status === 'pending');
-  const nextLog = pendingLogs[0];
-  const nextMedicine = nextLog
-    ? medicines.find((m) => m.id === nextLog.medicineId)
+  const nowDateStr = new Date().toDateString();
+  const allMedLogs = detail?.medLogs || [];
+  const todayLogs: MedLog[] = (() => {
+    const filtered = allMedLogs.filter((l) => {
+      const raw = l.scheduled_at || l.scheduledAt;
+      if (!raw) return false;
+      const d = new Date(raw);
+      return !isNaN(d.getTime()) && d.toDateString() === nowDateStr;
+    });
+    return filtered.length > 0 ? filtered : allMedLogs.slice(0, 3);
+  })();
+
+  const pendingLogs = todayLogs.filter((l) => l.status === 'pending');
+  const nextLog = pendingLogs[0] || null;
+  const activeMedicines = detail?.medicines || [];
+  const nextMed = nextLog
+    ? activeMedicines.find((m) => m.id === (nextLog.medicine_id || nextLog.medicineId))
     : null;
 
-  // Handle Mark as Taken
+  const activeRx = prescriptions.find((rx) => rx.status === 'active') || prescriptions[0] || null;
+  const latestReport = reports[0] || detail?.latestDiagnosis || null;
+
   const handleMarkTaken = async (medicineId: string) => {
-    setIsLoading(true);
-    // Optimistic update
-    setMedLogs((prev) =>
-      prev.map((log) =>
-        log.medicineId === medicineId
-          ? {
-              ...log,
-              status: 'taken',
-              takenAt: new Date().toLocaleTimeString([], {
-                hour: '2-digit',
-                minute: '2-digit',
-              }),
-            }
-          : log
-      )
-    );
+    if (!medicineId) return;
+    setIsLoggingMed(true);
 
     try {
-      await fetch(`/api/patients/${HERO_PATIENT.id}/med-log`, {
+      const res = await fetch(`/api/patients/${PATIENT_ID}/med-log`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ medicineId, status: 'taken' }),
       });
+      if (!res.ok) throw new Error('Failed');
+      showToast(t('med_logged', locale));
+      await loadAll();
     } catch {
-      // graceful fallback for local prototype
+      showToast('Could not save dose log. Please try again.', 'error');
+    } finally {
+      setIsLoggingMed(false);
     }
-
-    setIsLoading(false);
-    setToastMessage(t('med_logged', locale));
-    setTimeout(() => setToastMessage(null), 3500);
   };
 
-  // Handle Share Wearable Flag with Doctor
-  const handleShareWithDoctor = async (ruleId: string) => {
+  const handleGoalComplete = async (goalId: string) => {
+    setGoalsData((prev) => ({
+      ...prev,
+      goals: prev.goals.map((g) =>
+        g.id === goalId ? { ...g, completed_at: new Date().toISOString() } : g
+      ),
+    }));
+    showToast(t('doctor_note.goal_completed', locale));
+
+    try {
+      const res = await fetch(`/api/patients/${PATIENT_ID}/goals/${goalId}/complete`, {
+        method: 'POST',
+      });
+      if (!res.ok) throw new Error('Failed');
+    } catch {
+      setGoalsData((prev) => ({
+        ...prev,
+        goals: prev.goals.map((g) => (g.id === goalId ? { ...g, completed_at: null } : g)),
+      }));
+      showToast('Could not save goal status', 'error');
+    }
+  };
+
+  const handleShareFlag = async (ruleId: string) => {
     setIsSendingFlag((prev) => ({ ...prev, [ruleId]: true }));
     try {
-      await fetch(`/api/patients/${HERO_PATIENT.id}/vitals`, {
+      const res = await fetch(`/api/patients/${PATIENT_ID}/vitals`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ type: 'flag_acknowledged', valueA: 1 }),
       });
+      if (!res.ok) throw new Error('Failed');
       setAcknowledgedFlags((prev) => ({ ...prev, [ruleId]: true }));
-      setToastMessage(t('wearable.sent', locale));
-      setTimeout(() => setToastMessage(null), 3500);
+      showToast(t('wearable.sent', locale));
     } catch {
-      setToastMessage('Could not share flag');
-      setTimeout(() => setToastMessage(null), 3500);
+      showToast('Could not share alert with doctor', 'error');
     } finally {
       setIsSendingFlag((prev) => ({ ...prev, [ruleId]: false }));
     }
   };
 
-  // Handle Goal Completion (Optimistic)
-  const handleGoalComplete = async (goalId: string) => {
-    // Optimistic update
-    setGoalsData((prev) => ({
-      ...prev,
-      goals: prev.goals.map((g) =>
-        g.id === goalId
-          ? { ...g, completed_at: new Date().toISOString() }
-          : g
-      ),
-    }));
-    setToastMessage(t('doctor_note.goal_completed', locale));
-    setTimeout(() => setToastMessage(null), 3000);
+  const wearable = detail?.wearable;
+  const spo2Val = wearable?.spo2?.latest ?? 97;
+  const hrVal = wearable?.heartRate?.mean ?? 72;
+  const bpVal = wearable
+    ? `${wearable.bloodPressure.latestSystolic}/${wearable.bloodPressure.latestDiastolic}`
+    : '140/88';
+  const stepsVal = wearable?.steps?.dailyMean ?? 2840;
+  const caloriesVal = wearable?.calories?.latest ?? wearable?.calories?.dailyMean ?? 310;
 
-    try {
-      const res = await fetch(
-        `/api/patients/${HERO_PATIENT.id}/goals/${goalId}/complete`,
-        { method: 'POST' }
-      );
-      if (!res.ok) throw new Error('Goal completion failed');
-    } catch {
-      // Rollback
-      setGoalsData((prev) => ({
-        ...prev,
-        goals: prev.goals.map((g) =>
-          g.id === goalId ? { ...g, completed_at: null } : g
-        ),
-      }));
-      setToastMessage('Could not save goal completion');
-      setTimeout(() => setToastMessage(null), 3500);
-    }
-  };
-
-  // Compute stat values
-  const takenCount = medLogs.filter((l) => l.status === 'taken').length;
-  const totalMeds = medLogs.length;
-  const latestBp = vitals.find((v) => v.type === 'bp');
-  const latestSteps = vitals.find((v) => v.type === 'steps');
-
-  // Filter HIGH flags only on patient screen — don't show LOW/MEDIUM
-  const highAnomalyFlags = (wearable?.anomalyFlags || []).filter(
-    (f) => f.severity === 'HIGH'
+  const urgentFlags = (wearable?.anomalyFlags || []).filter(
+    (f) => f.severity === 'CRITICAL' || f.severity === 'HIGH'
   );
 
-  // Helper to get gentle i18n message for anomaly flag
-  const getFlagMessage = (ruleId: string, defaultDetail: string) => {
+  const getFlagMessage = (ruleId: string, fallbackDetail: string) => {
     const id = ruleId.toUpperCase();
+    if (id.includes('SPO2')) return t('wearable.spo2_low', locale);
     if (id.includes('HR') || id.includes('NOCTURNAL')) {
       return t('wearable.hr_nocturnal_high', locale);
     }
-    if (id.includes('STEP') || id.includes('WALK') || id.includes('FRAILTY')) {
-      return t('wearable.steps_decline', locale);
-    }
-    if (id.includes('GLUCOSE') || id.includes('SUGAR') || id.includes('FASTING')) {
-      return t('wearable.glucose_high', locale);
-    }
-    return defaultDetail;
-  };
-
-  // Helper to get flag icon (all --brand-teal, never red)
-  const getFlagIcon = (ruleId: string) => {
-    const id = ruleId.toUpperCase();
-    if (id.includes('HR') || id.includes('HEART')) {
-      return <Heart className="w-6 h-6 text-teal-600 shrink-0" />;
-    }
-    if (id.includes('STEP') || id.includes('WALK') || id.includes('ACTIVITY')) {
-      return <Activity className="w-6 h-6 text-teal-600 shrink-0" />;
-    }
-    if (id.includes('GLUCOSE') || id.includes('SUGAR')) {
-      return <Droplets className="w-6 h-6 text-teal-600 shrink-0" />;
-    }
-    return <Activity className="w-6 h-6 text-teal-600 shrink-0" />;
+    if (id.includes('STEP')) return t('wearable.steps_decline', locale);
+    if (id.includes('GLUCOSE')) return t('wearable.glucose_high', locale);
+    return fallbackDetail;
   };
 
   return (
-    <div className="min-h-screen bg-[#F4F1EA] md:bg-[#EAE6DB] flex flex-col items-center">
-      <div className="w-full max-w-md min-h-screen bg-[#FAF8F5] text-ink-900 flex flex-col relative md:border-x-2 md:border-ink-900 md:shadow-[0_10px_35px_rgba(0,0,0,0.08)] pb-28 sm:pb-32">
-        {/* Patient Header with Language Switcher */}
-        <PatientHeader locale={locale} onLocaleChange={handleLocaleChange} />
+    <div className="min-h-screen bg-[#F8FAFC] text-[#0F172A] pb-28">
+      <PatientHeader locale={locale} onLocaleChange={changeLocale} />
 
-        <main className="w-full px-3.5 sm:px-4 pt-3.5 space-y-4 sm:space-y-5">
-          {/* Simulated Data & Decision Support Banner */}
-          <div className="bg-[#FEF3C7] border-2 border-ink-900 rounded-xl px-3 py-2 flex items-center justify-between text-xs text-ink-900 font-body font-semibold shadow-[2px_2px_0px_#121214]">
-            <span className="flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse shrink-0" />
-              <span>{t('decision_support_note', locale)}</span>
-            </span>
+      <main className="max-w-3xl mx-auto px-4 pt-5 space-y-6">
+        {loadError && (
+          <div className="bg-[#FEF2F2] border border-[#FECACA] rounded-2xl p-4 flex items-center justify-between gap-3">
+            <p className="text-sm text-[#DC2626] font-medium">{loadError}</p>
+            <button
+              type="button"
+              onClick={loadAll}
+              className="inline-flex items-center gap-1.5 px-3.5 min-h-[44px] rounded-xl bg-white border border-[#FECACA] text-sm font-semibold text-[#DC2626] cursor-pointer"
+            >
+              <RefreshCw className="w-4 h-4" />
+              <span>Retry</span>
+            </button>
           </div>
+        )}
 
-          {/* Greeting Hero Section */}
-          <section
-            style={{ backgroundColor: '#121214', color: '#FFFFFF' }}
-            className="bg-[#121214] text-white rounded-[22px] p-5 sm:p-6 border-2 border-[#121214] shadow-[4px_4px_0px_#121214] relative overflow-hidden"
-          >
-            <div className="relative z-10">
-              <span className="font-body text-[#D4F77C] text-sm sm:text-base font-bold tracking-wide block">
-                {getGreeting()},
-              </span>
-              <h2 className="font-display font-bold text-2xl sm:text-3xl text-white tracking-tight mt-0.5">
-                {HERO_PATIENT.name} {t('ji', locale)}
+        {/* 1. Greeting & Watch Sync Hero Card */}
+        <section className="bg-white border border-[#E2E8F0] rounded-2xl p-5 sm:p-6 shadow-[0_1px_3px_rgba(15,23,42,0.06)] space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <p className="text-sm font-medium text-[#0D9488]">{getGreeting()},</p>
+              <h2 className="text-2xl sm:text-3xl font-semibold tracking-tight text-[#0F172A] mt-0.5">
+                {detail?.profile?.name || 'Ramesh K.'} {t('ji', locale)}
               </h2>
-              <p className="font-body text-[#EAE7DC] text-sm sm:text-base mt-1 font-medium">
-                {pendingLogs.length > 0
-                  ? `${pendingLogs.length} dose${pendingLogs.length > 1 ? 's' : ''} left for today.`
+              <p className="text-base text-[#475569] mt-1">
+                {isInitialLoading
+                  ? 'Syncing your daily care schedule...'
+                  : pendingLogs.length > 0
+                  ? `${pendingLogs.length} scheduled medicine${pendingLogs.length > 1 ? 's' : ''} remaining today`
                   : t('all_caught_up', locale)}
               </p>
             </div>
 
-            {/* Quick Voice Log Prompt Pill */}
-            <Link
-              href="/patient/voice"
-              className="mt-4 pt-3.5 border-t border-white/15 flex items-center justify-between bg-white/10 hover:bg-white/15 rounded-xl px-3 py-2 transition-all group"
-            >
-              <div className="flex items-center gap-2 text-xs sm:text-sm text-gray-200">
-                <span className="p-1.5 rounded-full bg-[#FF5C98] text-white shrink-0 shadow-[1px_1px_0px_#000]">
-                  <Mic className="w-3.5 h-3.5" />
-                </span>
-                <span className="font-body font-medium text-white/90">{t('voice_hint', locale)}</span>
-              </div>
-              <span className="text-xs font-display font-bold text-[#D4F77C] flex items-center gap-1 group-hover:translate-x-0.5 transition-transform shrink-0">
-                <span>Try voice</span>
-                <ArrowRight className="w-3.5 h-3.5" />
-              </span>
-            </Link>
-          </section>
-
-          {/* Next Medicine Dose Card */}
-          <section className="space-y-2">
-            <div className="flex items-center justify-between px-0.5">
-              <h3 className="font-display font-bold text-lg sm:text-xl text-ink-900">
-                {t('next_dose', locale)}
-              </h3>
+            <div className="flex flex-col sm:items-end gap-2">
+              <WatchSyncPill
+                provider={
+                  detail?.wearableDevice?.provider === 'google_fit'
+                    ? 'Google Fit Bridge'
+                    : detail?.wearableDevice?.device_name || 'Google Fit Bridge'
+                }
+                lastSyncedAt={detail?.wearableDevice?.last_synced_at || wearable?.lastUpdated}
+                status={detail?.wearableDevice?.is_active === false ? 'offline' : 'connected'}
+              />
               <Link
-                href="/patient/medicines"
-                className="font-body text-xs sm:text-sm font-bold text-ink-700 hover:text-ink-900 underline"
+                href="/patient/watch"
+                className="text-sm font-medium text-[#0D9488] hover:text-[#0F766E] inline-flex items-center gap-1"
               >
-                View all ({totalMeds})
+                <Watch className="w-4 h-4" />
+                <span>View Watch Sync →</span>
               </Link>
             </div>
+          </div>
 
-            {nextMedicine && nextLog ? (
-              <MedicineCard
-                id={nextMedicine.id}
-                name={nextMedicine.name}
-                dose={nextMedicine.dose}
-                time={nextLog.scheduledAt || nextLog.scheduled_at || '08:00 AM'}
-                instructions={nextMedicine.instructions}
-                status="pending"
-                isLoading={isLoading}
-                onMarkTaken={handleMarkTaken}
-              />
-            ) : (
-              <Card className="text-center py-6 bg-white border-2 border-ink-900 shadow-[3px_3px_0px_#121214] rounded-[20px]">
-                <CheckCircle2 className="w-10 h-10 text-emerald-600 mx-auto mb-2" />
-                <h4 className="font-display font-bold text-lg text-ink-900">
-                  {t('all_caught_up', locale)}
-                </h4>
-                <p className="font-body text-sm text-ink-500 mt-1 max-w-xs mx-auto">
-                  All scheduled medicines for today have been completed.
-                </p>
-              </Card>
-            )}
-          </section>
+          {/* Voice Local LLM Prompt Bar */}
+          <Link
+            href="/patient/voice"
+            className="flex items-center justify-between gap-3 p-3.5 rounded-xl bg-[#F0FDFA] border border-[#CCFBF1] hover:bg-[#CCFBF1]/40 transition-colors min-h-[54px]"
+          >
+            <div className="flex items-center gap-3 min-w-0">
+              <span className="w-10 h-10 rounded-full bg-[#0D9488] text-white flex items-center justify-center shrink-0">
+                <Mic className="w-5 h-5" />
+              </span>
+              <span className="text-sm sm:text-base font-medium text-[#0F172A] truncate">
+                {t('voice_hint', locale)}
+              </span>
+            </div>
+            <span className="text-sm font-semibold text-[#0F766E] inline-flex items-center gap-1 shrink-0">
+              <span>Ask AI</span>
+              <ArrowRight className="w-4 h-4" />
+            </span>
+          </Link>
+        </section>
 
-          {/* 3 StatTiles: Steps, Medicines, BP */}
-          <section className="space-y-2">
-            <h3 className="font-display font-bold text-lg sm:text-xl text-ink-900 px-0.5">
+        {/* 2. 4 Live Watch Telemetry Summary Tiles */}
+        <section className="space-y-3">
+          <div className="flex items-center justify-between">
+            <h3 className="text-lg font-semibold text-[#0F172A]">
               {t('today_summary', locale)}
             </h3>
+            <Link
+              href="/patient/vitals"
+              className="text-sm font-medium text-[#0D9488] hover:text-[#0F766E]"
+            >
+              View trends →
+            </Link>
+          </div>
 
-            <div className="grid grid-cols-3 gap-2 sm:gap-2.5 items-stretch">
-              {/* Steps Tile */}
-              <StatTile
-                label={locale === 'hi' ? 'कदम' : locale === 'kn' ? 'ಹೆಜ್ಜೆ' : 'Steps'}
-                value={
-                  latestSteps
-                    ? (latestSteps.valueA ?? latestSteps.value_a ?? 4210).toLocaleString()
-                    : '4,210'
-                }
-                unit=""
-                target="Goal: 6k"
-                icon={<Footprints className="w-4 h-4 text-ink-900" />}
-                trendText="On track"
-                trend="neutral"
-                className="h-full"
-              />
-
-              {/* Medicines Taken Tile */}
-              <StatTile
-                label={locale === 'hi' ? 'दवाएं' : locale === 'kn' ? 'ಔಷಧಿ' : 'Meds'}
-                value={`${takenCount}/${totalMeds}`}
-                unit=""
-                target={takenCount === totalMeds ? '100%' : 'Eve pending'}
-                icon={<Pill className="w-4 h-4 text-ink-900" />}
-                trend="up"
-                trendText={takenCount > 0 ? 'Logged' : 'Pending'}
-                className="h-full"
-              />
-
-              {/* Blood Pressure Tile */}
-              <StatTile
-                label={locale === 'hi' ? 'रक्तचाप' : locale === 'kn' ? 'ರಕ್ತದೊತ್ತಡ' : 'BP'}
-                value={
-                  latestBp
-                    ? `${latestBp.valueA ?? latestBp.value_a}/${
-                        latestBp.valueB ?? latestBp.value_b
-                      }`
-                    : '138/88'
-                }
-                unit="mmHg"
-                target="<130/80"
-                icon={<Heart className="w-4 h-4 text-ink-900" />}
-                trend="up"
-                trendText="Elevated"
-                className="h-full"
-              />
+          {isInitialLoading ? (
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              {[1, 2, 3, 4].map((i) => (
+                <div
+                  key={i}
+                  className="bg-white border border-[#E2E8F0] rounded-2xl p-4 h-28 animate-pulse"
+                >
+                  <div className="h-3 bg-[#E2E8F0] rounded w-20 mb-3" />
+                  <div className="h-7 bg-[#E2E8F0] rounded w-16" />
+                </div>
+              ))}
             </div>
-          </section>
+          ) : (
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              {/* Blood Oxygen */}
+              <Link
+                href="/patient/vitals?tab=spo2"
+                className="bg-white border border-[#E2E8F0] hover:border-[#CBD5E1] rounded-2xl p-4 shadow-[0_1px_2px_rgba(15,23,42,0.04)] transition-all"
+              >
+                <div className="flex items-center gap-1.5 text-sm font-medium text-[#64748B]">
+                  <Wind className="w-4 h-4 text-[#0D9488]" />
+                  <span>Blood Oxygen</span>
+                </div>
+                <p className="text-2xl font-semibold text-[#0F172A] mt-2 tabular-nums">
+                  {spo2Val}
+                  <span className="text-sm font-normal text-[#64748B] ml-1">%</span>
+                </p>
+                <p
+                  className={`text-xs font-medium mt-1 ${
+                    spo2Val < 92 ? 'text-[#DC2626]' : 'text-[#15803D]'
+                  }`}
+                >
+                  {spo2Val < 92 ? 'Check with clinic' : 'Normal range'}
+                </p>
+              </Link>
 
-        {/* Phase 4A: Wearable Insight Section ("Your Health Today") */}
+              {/* Heart Rate */}
+              <Link
+                href="/patient/vitals?tab=hr"
+                className="bg-white border border-[#E2E8F0] hover:border-[#CBD5E1] rounded-2xl p-4 shadow-[0_1px_2px_rgba(15,23,42,0.04)] transition-all"
+              >
+                <div className="flex items-center gap-1.5 text-sm font-medium text-[#64748B]">
+                  <Activity className="w-4 h-4 text-[#4F46E5]" />
+                  <span>Heart Rate</span>
+                </div>
+                <p className="text-2xl font-semibold text-[#0F172A] mt-2 tabular-nums">
+                  {hrVal}
+                  <span className="text-sm font-normal text-[#64748B] ml-1">bpm</span>
+                </p>
+                <p className="text-xs text-[#64748B] mt-1 tabular-nums">
+                  Resting avg · max {wearable?.heartRate?.max ?? 88}
+                </p>
+              </Link>
+
+              {/* Blood Pressure */}
+              <Link
+                href="/patient/vitals?tab=bp"
+                className="bg-white border border-[#E2E8F0] hover:border-[#CBD5E1] rounded-2xl p-4 shadow-[0_1px_2px_rgba(15,23,42,0.04)] transition-all"
+              >
+                <div className="flex items-center gap-1.5 text-sm font-medium text-[#64748B]">
+                  <Heart className="w-4 h-4 text-[#D97706]" />
+                  <span>Blood Pressure</span>
+                </div>
+                <p className="text-2xl font-semibold text-[#0F172A] mt-2 tabular-nums">
+                  {bpVal}
+                </p>
+                <p className="text-xs text-[#64748B] mt-1">mmHg · target &lt;130/80</p>
+              </Link>
+
+              {/* Steps & Calories */}
+              <Link
+                href="/patient/vitals?tab=steps"
+                className="bg-white border border-[#E2E8F0] hover:border-[#CBD5E1] rounded-2xl p-4 shadow-[0_1px_2px_rgba(15,23,42,0.04)] transition-all"
+              >
+                <div className="flex items-center gap-1.5 text-sm font-medium text-[#64748B]">
+                  <Footprints className="w-4 h-4 text-[#0D9488]" />
+                  <span>Activity</span>
+                </div>
+                <p className="text-2xl font-semibold text-[#0F172A] mt-2 tabular-nums">
+                  {stepsVal.toLocaleString()}
+                </p>
+                <p className="text-xs text-[#64748B] mt-1 inline-flex items-center gap-1 tabular-nums">
+                  <Flame className="w-3 h-3 text-[#D97706]" />
+                  <span>{caloriesVal} kcal today</span>
+                </p>
+              </Link>
+            </div>
+          )}
+        </section>
+
+        {/* 3. Next Dose & Quick Medicine Check-off */}
+        <section className="space-y-3">
+          <div className="flex items-center justify-between">
+            <h3 className="text-lg font-semibold text-[#0F172A]">
+              {t('next_dose', locale)}
+            </h3>
+            <Link
+              href="/patient/medicines"
+              className="text-sm font-medium text-[#0D9488] hover:text-[#0F766E]"
+            >
+              Full Digital Rx →
+            </Link>
+          </div>
+
+          {nextLog ? (
+            <div className="bg-white border border-[#E2E8F0] rounded-2xl p-5 shadow-[0_1px_3px_rgba(15,23,42,0.06)] flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="flex items-start gap-3.5">
+                <span className="w-11 h-11 rounded-xl bg-[#F0FDFA] border border-[#CCFBF1] text-[#0D9488] flex items-center justify-center shrink-0">
+                  <Pill className="w-5 h-5" />
+                </span>
+                <div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h4 className="text-lg font-semibold text-[#0F172A]">
+                      {nextMed?.name || nextLog.medicine_name || 'Metformin'}
+                    </h4>
+                    <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-[#F1F5F9] text-[#334155]">
+                      {nextMed?.dose || nextLog.dose || '500mg'}
+                    </span>
+                  </div>
+                  <p className="text-sm text-[#475569] mt-0.5">
+                    {nextMed?.instructions || 'Take after dinner with water'}
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                disabled={isLoggingMed}
+                onClick={() => handleMarkTaken(nextLog.medicine_id || nextLog.medicineId || 'm1')}
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 min-h-[48px] px-6 rounded-xl bg-[#0D9488] hover:bg-[#0F766E] text-white text-base font-semibold shadow-xs transition-colors cursor-pointer disabled:opacity-50"
+              >
+                {isLoggingMed ? (
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                ) : (
+                  <CheckCircle2 className="w-5 h-5" />
+                )}
+                <span>{t('mark_taken', locale)} ✓</span>
+              </button>
+            </div>
+          ) : (
+            <div className="bg-white border border-[#BBF7D0] bg-[#F0FDF4]/50 rounded-2xl p-5 flex items-center gap-3.5">
+              <CheckCircle2 className="w-8 h-8 text-[#15803D] shrink-0" />
+              <div>
+                <h4 className="text-base font-semibold text-[#0F172A]">
+                  {t('all_caught_up', locale)}
+                </h4>
+                <p className="text-sm text-[#475569]">
+                  {detail?.medCompliancePct ?? 100}% 7-day adherence on Dr. Meera Rao&apos;s plan.
+                </p>
+              </div>
+            </div>
+          )}
+        </section>
+
+        {/* 4. Gentle Wearable Insight Banner (if HIGH/CRITICAL flags exist) */}
         {wearable && (
-          <section className="space-y-2.5 pt-1">
-            <h3 className="font-display font-bold text-lg sm:text-xl text-ink-900 px-0.5">
+          <section className="space-y-3">
+            <h3 className="text-lg font-semibold text-[#0F172A]">
               {t('wearable.section_title', locale)}
             </h3>
 
-            {highAnomalyFlags.length === 0 ? (
-              <div className="bg-white rounded-[20px] border-2 border-ink-900 shadow-[3px_3px_0px_#121214] border-l-[6px] border-l-emerald-600 p-4 sm:p-5 flex items-center gap-3.5">
-                <div className="p-2.5 rounded-xl bg-emerald-50 text-emerald-600 shrink-0">
-                  <CheckCircle2 className="w-6 h-6 text-emerald-600" />
-                </div>
-                <p className="font-body font-semibold text-base sm:text-lg text-ink-900 leading-snug">
+            {urgentFlags.length === 0 ? (
+              <div className="bg-white border border-[#E2E8F0] border-l-4 border-l-[#15803D] rounded-2xl p-4 flex items-center gap-3">
+                <CheckCircle2 className="w-6 h-6 text-[#15803D] shrink-0" />
+                <p className="text-base font-medium text-[#0F172A]">
                   {t('wearable.all_good', locale)}
                 </p>
               </div>
             ) : (
               <div className="space-y-3">
-                {highAnomalyFlags.map((flag) => {
-                  const isAcknowledged = acknowledgedFlags[flag.ruleId];
+                {urgentFlags.map((flag) => {
+                  const isAck = acknowledgedFlags[flag.ruleId];
                   const isSending = isSendingFlag[flag.ruleId];
 
                   return (
                     <div
                       key={flag.ruleId}
-                      className="bg-white rounded-[20px] border-2 border-ink-900 shadow-[3px_3px_0px_#121214] border-l-[6px] border-l-[#0D9488] p-4 sm:p-5 space-y-3"
+                      className="bg-white border border-[#E2E8F0] border-l-4 border-l-[#0D9488] rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
                     >
                       <div className="flex items-start gap-3">
-                        <div className="p-2 rounded-xl bg-teal-50 text-teal-700 shrink-0 mt-0.5 border border-teal-200">
-                          {getFlagIcon(flag.ruleId)}
-                        </div>
-                        <p className="font-body font-semibold text-base sm:text-lg text-ink-900 leading-snug">
+                        <span className="p-2 rounded-xl bg-[#F0FDFA] text-[#0D9488] shrink-0">
+                          {flag.ruleId.includes('GLUCOSE') ? (
+                            <Droplets className="w-5 h-5" />
+                          ) : (
+                            <Activity className="w-5 h-5" />
+                          )}
+                        </span>
+                        <p className="text-base font-medium text-[#0F172A] leading-snug">
                           {getFlagMessage(flag.ruleId, flag.detail)}
                         </p>
                       </div>
 
-                      <div className="pt-1 flex justify-end">
-                        {isAcknowledged ? (
-                          <button
-                            type="button"
-                            disabled
-                            className="bg-emerald-50 border-2 border-emerald-600 text-emerald-800 min-h-[44px] px-4 py-2 rounded-xl font-body font-bold text-sm flex items-center gap-2 cursor-default select-none shadow-[2px_2px_0px_#15803D]"
-                          >
-                            <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                            <span>{t('wearable.sent', locale)}</span>
-                          </button>
-                        ) : (
-                          <button
-                            type="button"
-                            disabled={isSending}
-                            onClick={() => handleShareWithDoctor(flag.ruleId)}
-                            className="bg-white hover:bg-[#FAF8F5] border-2 border-ink-900 text-ink-900 font-display font-bold text-xs sm:text-sm px-4 py-2.5 rounded-xl shadow-[2px_2px_0px_#121214] active:translate-y-0.5 min-h-[44px] flex items-center justify-center gap-2 transition-all cursor-pointer"
-                          >
-                            {isSending && (
-                              <Loader2 className="w-4 h-4 animate-spin text-ink-900" />
-                            )}
-                            <span>{t('wearable.tell_doctor', locale)}</span>
-                          </button>
-                        )}
-                      </div>
+                      <button
+                        type="button"
+                        disabled={isAck || isSending}
+                        onClick={() => handleShareFlag(flag.ruleId)}
+                        className={`shrink-0 min-h-[44px] px-4 rounded-xl text-sm font-semibold border transition-colors ${
+                          isAck
+                            ? 'bg-[#F0FDF4] border-[#BBF7D0] text-[#15803D] cursor-default'
+                            : 'bg-white border-[#E2E8F0] hover:bg-[#F8FAFC] text-[#0F172A] cursor-pointer'
+                        }`}
+                      >
+                        {isSending
+                          ? 'Sharing...'
+                          : isAck
+                          ? t('wearable.sent', locale)
+                          : t('wearable.tell_doctor', locale)}
+                      </button>
                     </div>
                   );
                 })}
@@ -475,94 +532,97 @@ export default function PatientHomePage() {
           </section>
         )}
 
-        {/* Phase 4B: Doctor Note Card */}
-        {goalsData.latestNote && (
-          <section className="space-y-2 pt-1">
-            <DoctorNoteCard
-              noteDate={
-                goalsData.latestNote.created_at
-                  ? new Date(goalsData.latestNote.created_at).toLocaleDateString([], {
-                      month: 'short',
-                      day: 'numeric',
-                    })
-                  : 'Recent'
-              }
-              reminders={goalsData.latestNote.parsed_instructions?.reminders ?? []}
-              goals={goalsData.goals.map((g) => ({
-                id: g.id,
-                category: g.category,
-                target: g.target,
-                by: g.by_date ?? undefined,
-                isCompleted: !!g.completed_at,
-              }))}
-              followUpDate={
-                goalsData.latestNote.parsed_instructions?.followUpDate ?? null
-              }
-              onGoalComplete={handleGoalComplete}
-              locale={locale}
-            />
+        {/* 5. Active Lifestyle & Diet Targets */}
+        {(goalsData.goals.length > 0 || (activeRx && activeRx.lifestyle_targets.length > 0)) && (
+          <section className="space-y-3">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-[#0F172A]">
+                {t('doctor_note.goals_title', locale)}
+              </h3>
+              <span className="text-xs font-medium text-[#64748B]">
+                From Dr. Meera Rao&apos;s Digital Rx
+              </span>
+            </div>
+
+            <div className="space-y-2.5">
+              {goalsData.goals.length > 0
+                ? goalsData.goals.slice(0, 4).map((g) => (
+                    <PatientGoalCard
+                      key={g.id}
+                      id={g.id}
+                      category={g.category}
+                      target={g.target}
+                      by={g.by_date}
+                      isCompleted={Boolean(g.completed_at)}
+                      onComplete={handleGoalComplete}
+                    />
+                  ))
+                : activeRx?.lifestyle_targets.map((lt) => (
+                    <PatientGoalCard
+                      key={lt.id}
+                      id={lt.id}
+                      category={lt.category}
+                      target={lt.description}
+                      by={lt.target_value ? `${lt.target_value} ${lt.unit || ''}` : 'Daily'}
+                      isCompleted={false}
+                    />
+                  ))}
+            </div>
           </section>
         )}
 
-        {/* Quick Action: Log BP reading */}
-        <section className="pt-1">
-          <Link href="/patient/vitals">
-            <div className="flex items-center justify-between p-3.5 sm:p-4 bg-white rounded-[20px] border-2 border-ink-900 shadow-[2px_2px_0px_#121214] hover:-translate-y-0.5 transition-all cursor-pointer">
-              <div className="flex items-center gap-3">
-                <div className="p-2.5 bg-[#FF5C98] text-white rounded-xl border border-ink-900">
-                  <Heart className="w-5 h-5 stroke-[2.5]" />
-                </div>
-                <div>
-                  <h4 className="font-display font-bold text-base sm:text-lg text-ink-900">
-                    {t('log_bp_title', locale)}
-                  </h4>
-                  <p className="font-body text-xs sm:text-sm text-ink-500">
-                    Record your morning or evening pressure
-                  </p>
-                </div>
-              </div>
-              <ArrowRight className="w-5 h-5 text-ink-900" />
-            </div>
-          </Link>
-        </section>
-
-        {/* Clinic & Doctor Info Footer Card */}
-        <section className="pt-1">
-          <div className="bg-white rounded-[20px] border-2 border-ink-900 shadow-[2px_2px_0px_#121214] p-3.5 sm:p-4">
+        {/* 6. Latest Medical Diagnosis Summary */}
+        {latestReport && (
+          <section className="space-y-3">
             <div className="flex items-center justify-between">
-              <div>
-                <p className="font-body text-[11px] text-ink-500 uppercase tracking-wider font-bold">
-                  Primary Physician
-                </p>
-                <p className="font-display font-bold text-ink-900 text-base mt-0.5">
-                  {t('doctor_name', locale)}
-                </p>
-                <p className="font-body text-xs text-ink-500">
-                  {t('clinic_name', locale)} • Bengaluru
-                </p>
-              </div>
-              <a
-                href="tel:+918023456789"
-                className="px-3.5 py-2 bg-[#D4F77C] hover:bg-[#CEF267] border-2 border-ink-900 rounded-full font-display font-bold text-xs text-ink-900 shadow-[1.5px_1.5px_0px_#121214] active:translate-y-0.5 flex items-center gap-1.5 transition-all"
+              <h3 className="text-lg font-semibold text-[#0F172A]">
+                {t('reports.title', locale)}
+              </h3>
+              <Link
+                href="/patient/reports"
+                className="text-sm font-medium text-[#0D9488] hover:text-[#0F766E]"
               >
-                <span>Call Clinic</span>
-              </a>
+                Read Full Report →
+              </Link>
+            </div>
+
+            <PatientDiagnosisCard report={latestReport} compact locale={locale} />
+          </section>
+        )}
+
+        {/* 7. Primary Physician Info Card */}
+        <section className="bg-white border border-[#E2E8F0] rounded-2xl p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-3.5">
+            <span className="w-11 h-11 rounded-xl bg-[#F1F5F9] text-[#334155] flex items-center justify-center shrink-0">
+              <Stethoscope className="w-5 h-5" />
+            </span>
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wider text-[#64748B]">
+                Primary Treating Physician
+              </p>
+              <p className="text-base font-semibold text-[#0F172A] mt-0.5">
+                {t('doctor_name', locale)}
+              </p>
+              <p className="text-sm text-[#64748B]">{t('clinic_name', locale)} · Indiranagar</p>
             </div>
           </div>
+
+          <a
+            href="tel:+918023456789"
+            className="inline-flex items-center justify-center gap-2 min-h-[48px] px-5 rounded-xl bg-[#0F172A] hover:bg-[#1E293B] text-white text-sm font-semibold transition-colors"
+          >
+            <Phone className="w-4 h-4" />
+            <span>{t('contact_doctor', locale)}</span>
+          </a>
         </section>
+
+        <p className="text-xs text-[#64748B] text-center pb-2">
+          {t('decision_support_note', locale)}
+        </p>
       </main>
 
-      {/* Toast Notification */}
-      {toastMessage && (
-        <div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-50 bg-ink-900 text-white px-5 py-3 rounded-full border-2 border-ink-900 shadow-[3px_3px_0px_#121214] flex items-center gap-2 font-display text-sm font-semibold animate-bounce select-none">
-          <CheckCircle2 className="w-5 h-5 text-[#D4F77C]" />
-          <span>{toastMessage}</span>
-        </div>
-      )}
-
-      {/* Bottom Tab Bar (68px, fixed bottom) */}
+      <PatientToast message={toast?.message || null} type={toast?.type} />
       <BottomNav locale={locale} />
-      </div>
     </div>
   );
 }

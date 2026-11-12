@@ -2,9 +2,8 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { Phone, ChevronLeft, Shield } from 'lucide-react';
+import { ChevronLeft, Phone, Shield, Watch } from 'lucide-react';
 import { Locale } from '@/lib/i18n';
-import { DoodleDaisy } from '@/components/ui/Doodles';
 
 export interface PatientHeaderProps {
   locale: Locale;
@@ -12,6 +11,37 @@ export interface PatientHeaderProps {
   showBack?: boolean;
   backHref?: string;
   title?: string;
+}
+
+function ClinicalLogoMark() {
+  return (
+    <Link
+      href="/"
+      className="inline-flex items-center gap-2 rounded-lg py-1 pr-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488]"
+    >
+      <span className="w-8 h-8 rounded-lg bg-[#0D9488] text-white flex items-center justify-center shadow-xs shrink-0">
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          viewBox="0 0 24 24"
+          className="w-4 h-4"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2.2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden="true"
+        >
+          <path d="M4 16c2.5-6 13.5-6 16 0" />
+          <path d="M3 16h18" />
+          <path d="M12 6v5" />
+          <path d="M9.5 8.5h5" />
+        </svg>
+      </span>
+      <span className="font-semibold tracking-tight text-base text-[#0F172A] leading-none">
+        Care<span className="text-[#0D9488]">Bridge</span>
+      </span>
+    </Link>
+  );
 }
 
 export function PatientHeader({
@@ -22,83 +52,86 @@ export function PatientHeader({
   title,
 }: PatientHeaderProps) {
   return (
-    <header className="sticky top-0 z-40 w-full bg-white border-b-2 border-ink-900 px-3.5 sm:px-4 py-2.5 shadow-[0px_2px_0px_#121214]">
-      <div className="w-full flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2">
+    <header className="sticky top-0 z-40 w-full bg-white/95 backdrop-blur-md border-b border-[#E2E8F0]">
+      <div className="max-w-3xl mx-auto px-4 py-2.5 flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2 min-w-0">
           {showBack ? (
             <Link
               href={backHref}
-              className="p-2 -ml-2 rounded-xl text-ink-900 hover:bg-[#FAF8F5] flex items-center min-h-[44px] min-w-[44px]"
+              aria-label="Go back"
+              className="inline-flex items-center justify-center min-h-[44px] min-w-[44px] -ml-2 rounded-xl text-[#334155] hover:bg-[#F1F5F9] hover:text-[#0F172A] transition-colors shrink-0"
             >
-              <ChevronLeft className="w-6 h-6 stroke-[2.5]" />
+              <ChevronLeft className="w-5 h-5" />
             </Link>
           ) : (
-            <Link href="/" className="flex items-center gap-2 group">
-              <div className="w-7 h-7 rounded-full border-2 border-ink-900 bg-white flex items-center justify-center shadow-[1.5px_1.5px_0px_#121214] group-hover:rotate-12 transition-transform">
-                <DoodleDaisy size={16} color="#121214" centerColor="#FEE159" />
-              </div>
-              <span className="font-display font-bold text-xl text-ink-900 tracking-tight">
-                carebridge
-              </span>
-            </Link>
+            <ClinicalLogoMark />
           )}
 
           {title && (
-            <h1 className="font-display font-bold text-base text-ink-900 line-clamp-1 ml-1">
+            <h1 className="font-semibold text-base sm:text-lg text-[#0F172A] truncate">
               {title}
             </h1>
           )}
         </div>
 
-        <div className="flex items-center gap-2">
-          {/* Language Switcher */}
-          <div className="flex items-center bg-[#FAF8F5] p-0.5 rounded-full border-2 border-ink-900 shadow-[1.5px_1.5px_0px_#121214]">
-            <button
-              onClick={() => onLocaleChange('en')}
-              className={`px-2.5 py-1 text-xs font-data font-bold rounded-full transition-all cursor-pointer ${
-                locale === 'en'
-                  ? 'bg-ink-900 text-white'
-                  : 'text-ink-600 hover:text-ink-900'
-              }`}
-            >
-              EN
-            </button>
-            <button
-              onClick={() => onLocaleChange('hi')}
-              className={`px-2.5 py-1 text-xs font-data font-bold rounded-full transition-all cursor-pointer ${
-                locale === 'hi'
-                  ? 'bg-[#D4F77C] text-ink-900 border border-ink-900'
-                  : 'text-ink-600 hover:text-ink-900'
-              }`}
-            >
-              हिंदी
-            </button>
-            <button
-              onClick={() => onLocaleChange('kn')}
-              className={`px-2.5 py-1 text-xs font-data font-bold rounded-full transition-all cursor-pointer ${
-                locale === 'kn'
-                  ? 'bg-[#D4F77C] text-ink-900 border border-ink-900'
-                  : 'text-ink-600 hover:text-ink-900'
-              }`}
-            >
-              ಕನ್ನಡ
-            </button>
+        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+          {/* Segmented Language Switcher */}
+          <div
+            className="inline-flex items-center bg-[#F1F5F9] p-1 rounded-full border border-[#E2E8F0]"
+            role="group"
+            aria-label="Language selection"
+          >
+            {(
+              [
+                { code: 'en', label: 'EN' },
+                { code: 'hi', label: 'हिंदी' },
+                { code: 'kn', label: 'ಕನ್ನಡ' },
+              ] as const
+            ).map((item) => {
+              const active = locale === item.code;
+              return (
+                <button
+                  key={item.code}
+                  type="button"
+                  onClick={() => onLocaleChange(item.code)}
+                  className={`min-h-[36px] px-2.5 sm:px-3 rounded-full text-xs font-medium transition-all cursor-pointer ${
+                    active
+                      ? 'bg-[#0D9488] text-white shadow-xs'
+                      : 'text-[#64748B] hover:text-[#0F172A]'
+                  }`}
+                >
+                  {item.label}
+                </button>
+              );
+            })}
           </div>
 
-          {/* Privacy & Consent Settings */}
+          {/* Watch Bridge Shortcut */}
+          <Link
+            href="/patient/watch"
+            title="Smartwatch Bridge & Sync"
+            aria-label="Smartwatch Bridge & Sync"
+            className="hidden sm:inline-flex items-center justify-center min-h-[44px] min-w-[44px] rounded-xl border border-[#E2E8F0] bg-white text-[#334155] hover:bg-[#F8FAFC] hover:text-[#0D9488] transition-colors"
+          >
+            <Watch className="w-4 h-4" />
+          </Link>
+
+          {/* Privacy & WhatsApp Alerts */}
           <Link
             href="/patient/consent"
-            title="Privacy & Consent Settings"
-            className="p-2 rounded-full bg-white border-2 border-ink-900 text-ink-900 hover:bg-[#FAF8F5] shadow-[1.5px_1.5px_0px_#121214] active:translate-y-0.5 transition flex items-center justify-center min-h-[38px] min-w-[38px]"
+            title="Privacy, Consent & WhatsApp Alerts"
+            aria-label="Privacy, Consent & WhatsApp Alerts"
+            className="inline-flex items-center justify-center min-h-[44px] min-w-[44px] rounded-xl border border-[#E2E8F0] bg-white text-[#334155] hover:bg-[#F8FAFC] hover:text-[#0F172A] transition-colors"
           >
             <Shield className="w-4 h-4" />
           </Link>
 
-          {/* Quick Clinic Contact */}
+          {/* Clinic Quick Call */}
           <a
             href="tel:+918023456789"
             title="Call Sunrise Clinic"
-            className="p-2 rounded-full bg-[#D4F77C] border-2 border-ink-900 text-ink-900 hover:bg-[#CEF267] shadow-[1.5px_1.5px_0px_#121214] active:translate-y-0.5 transition flex items-center justify-center min-h-[38px] min-w-[38px]"
+            aria-label="Call Sunrise Clinic"
+            className="inline-flex items-center justify-center min-h-[44px] min-w-[44px] rounded-xl bg-[#F0FDFA] border border-[#CCFBF1] text-[#0F766E] hover:bg-[#CCFBF1]/60 transition-colors"
           >
             <Phone className="w-4 h-4" />
           </a>

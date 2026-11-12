@@ -2,6 +2,8 @@ export type RiskBand = "green" | "yellow" | "red";
 
 export type ConsentCategory = "vitals" | "medicines" | "steps" | "glucose";
 
+export type VitalType = "bp" | "steps" | "glucose" | "hr" | "spo2" | "calories" | "sleep";
+
 export interface Patient {
   id: string;
   name: string;
@@ -130,6 +132,16 @@ export interface WearableContext {
   lastUpdated: string;
 }
 
+export interface WhatsAppPreferences {
+  patient_id: string;
+  patient_phone: string;
+  guardian_name: string;
+  guardian_phone: string;
+  new_prescription_alerts: boolean;
+  missed_medicine_reminders: boolean;
+  critical_vital_alerts: boolean;
+}
+
 export interface RiskScore {
   id: string;
   patient_id: string;
@@ -231,7 +243,11 @@ export interface PatientDetail {
   wearable?: WearableContext | null;
   diagnosisReports?: DiagnosisReport[];
   prescriptions?: Prescription[];
+  activePrescriptions?: Prescription[];
+  latestDiagnosis?: DiagnosisReport | null;
   wearableDevices?: WearableDevice[];
+  wearableDevice?: WearableDevice | null;
+  medCompliancePct?: number;
 }
 
 export interface DoctorNoteReminder {
@@ -247,7 +263,7 @@ export interface DoctorNote {
   note_text: string;
   parsed_instructions?: {
     reminders: DoctorNoteReminder[];
-    goals: { category: "steps" | "medicine" | "bp" | "glucose" | "other"; target: string; by: string }[];
+    goals: { category: "steps" | "medicine" | "bp" | "glucose" | "other"; target: string; by?: string }[];
     followUpDate: string | null;
   } | null;
   created_at: string;
@@ -256,7 +272,7 @@ export interface DoctorNote {
 export interface PatientGoal {
   id: string;
   patient_id: string;
-  category: "steps" | "medicine" | "bp" | "glucose" | "other";
+  category: "steps" | "medicine" | "bp" | "glucose" | "diet" | "calories" | "sleep" | "other";
   target: string;
   by_date?: string | null;
   source_note_id?: string | null;

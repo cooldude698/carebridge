@@ -399,7 +399,7 @@ When presenting to judges or clinical partners, execute this proven sequence usi
 
 ```bash
 # 1. Clone repository
-git clone https://github.com/cooldude698/carebridge.git
+git clone https://github.com/Swapnil-Ghosh06/carebridge.git
 cd carebridge
 
 # 2. Install dependencies

@@ -1,57 +1,219 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
-  Pill,
-  Heart,
   CheckCircle2,
-  AlertCircle,
-  Sparkles,
-  Keyboard,
+  Cpu,
+  Heart,
+  Loader2,
+  Mic,
+  Pill,
+  Send,
+  Square,
+  Volume2,
+  VolumeX,
 } from 'lucide-react';
-import { Card, Button, VoiceButton } from '@/components/ui';
 import { PatientHeader } from '@/components/patient/PatientHeader';
 import { BottomNav } from '@/components/patient/BottomNav';
-import { Locale } from '@/lib/i18n';
-import { useSpeech } from '@/lib/voice/useSpeech';
-import { parseVoiceIntent, VoiceIntent } from '@/lib/voice/intent';
-import { HERO_PATIENT } from '@/lib/mockData';
+import { PatientToast } from '@/components/patient/PatientToast';
+import { usePatientLocale } from '@/components/patient/usePatientLocale';
+import { t } from '@/lib/i18n';
+import {
+  ActiveMedicineOption,
+  parseVoiceIntent,
+  useSpeech,
+  useSpeechSynthesis,
+  VoiceIntent,
+} from '@/lib/voice';
+import { PatientDetail, Prescription } from '@/lib/types';
 
-export default function VoiceLoggingPage() {
-  const router = useRouter();
-  const [locale, setLocale] = useState<Locale>('hi');
-  const [typedInput, setTypedInput] = useState('');
-  const [showTypedInput, setShowTypedInput] = useState(false);
-  const [detectedIntent, setDetectedIntent] = useState<VoiceIntent | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+const PATIENT_ID = 'p1';
 
-  // Load language from storage
-  useEffect(() => {
-    try {
-      const savedLocale = localStorage.getItem('carebridge_locale') as Locale;
-      if (savedLocale && ['en', 'hi', 'kn'].includes(savedLocale)) {
-        setLocale(savedLocale);
-      }
-    } catch {
-      // ignore
-    }
+interface ChatMessageItem {
+  id: string;
+  role: 'user' | 'assistant';
+  text: string;
+  isStreaming?: boolean;
+  symptomLogged?: boolean;
+}
+
+const FOOD_QUICK_CHIPS = [
+  'How many vitamins & nutrients are in masala dosa? Is it good for my sugar and cholesterol?',
+  'Does biryani have too much oil for me to eat today?',
+  'Can I eat a banana with my Metformin?',
+  'What fruits are safe for my blood pressure?',
+];
+
+export default function PatientVoiceAssistantPage() {
+  const { locale, changeLocale } = usePatientLocale('en');
+
+  const [detail, setDetail] = useState<PatientDetail | null>(null);
+  const [activeMedicines, setActiveMedicines] = useState<ActiveMedicineOption[]>([]);
+  const [messages, setMessages] = useState<ChatMessageItem[]>([
+    {
+      id: 'welcome-1',
+      role: 'assistant',
+      text: 'Namaste Ramesh ji! Ask me by voice or text about any food, vitamins, sugar, cholesterol, or say "Maine dawai le li" or "BP 138 by 86" to log instantly.',
+    },
+  ]);
+  const [inputText, setInputText] = useState('');
+  const [autoSpeak, setAutoSpeak] = useState(true);
+  const [isStreamingReply, setIsStreamingReply] = useState(false);
+  const [pendingAction, setPendingAction] = useState<VoiceIntent | null>(null);
+  const [isConfirmingAction, setIsConfirmingAction] = useState(false);
+  const [toast, setToast] = useState<string | null>(null);
+
+  const chatEndRef = useRef<HTMLDivElement | null>(null);
+  const { isSpeaking, speakingId, speak, stop } = useSpeechSynthesis();
+
+  const showToast = useCallback((msg: string) => {
+    setToast(msg);
+    setTimeout(() => setToast(null), 3500);
   }, []);
 
-  const handleLocaleChange = (newLocale: Locale) => {
-    setLocale(newLocale);
-    try {
-      localStorage.setItem('carebridge_locale', newLocale);
-    } catch {
-      // ignore
-    }
-  };
+  // Load real patient context & active prescribed medicines on mount
+  useEffect(() => {
+    let active = true;
+    async function loadContext() {
+      try {
+        const [pRes, rxRes] = await Promise.all([
+          fetch(`/api/patients/${PATIENT_ID}?actor=patient`, { cache: 'no-store' }),
+          fetch(`/api/patients/${PATIENT_ID}/prescriptions`, { cache: 'no-store' }),
+        ]);
 
-  // Web Speech API hook
+        const medsMap = new Map<string, ActiveMedicineOption>();
+
+        if (pRes.ok && active) {
+          const pData = (await pRes.json()) as PatientDetail;
+          setDetail(pData);
+          (pData.medicines || []).forEach((m) => {
+            medsMap.set(m.id, { id: m.id, name: m.name, dose: m.dose });
+          });
+        }
+
+        if (rxRes.ok && active) {
+          const rxList = (await rxRes.json()) as Prescription[];
+          rxList
+            .filter((rx) => rx.status === 'active')
+            .forEach((rx) => {
+              rx.medicines.forEach((m) => {
+                const realId = m.medicine_id || m.id;
+                medsMap.set(realId, {
+                  id: realId,
+                  name: m.medicine_name,
+                  dose: m.dosage,
+                });
+              });
+            });
+        }
+
+        if (active) {
+          setActiveMedicines(Array.from(medsMap.values()));
+        }
+      } catch {
+        // Fallback handled gracefully
+      }
+    }
+    loadContext();
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages, pendingAction]);
+
+  const askLocalLlm = useCallback(
+    async (question: string, shouldSpeak: boolean) => {
+      const userId = `u-${Date.now()}`;
+      const botId = `a-${Date.now() + 1}`;
+
+      setMessages((prev) => [
+        ...prev,
+        { id: userId, role: 'user', text: question },
+        { id: botId, role: 'assistant', text: '', isStreaming: true },
+      ]);
+      setIsStreamingReply(true);
+
+      let fullReply = '';
+      try {
+        const res = await fetch('/api/ai/ask', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            patientId: PATIENT_ID,
+            question,
+            language: locale,
+          }),
+        });
+
+        const symptomFlag = res.headers.get('X-CareBridge-Symptom-Logged') === '1';
+
+        if (!res.ok || !res.body) {
+          throw new Error('Failed to stream AI reply');
+        }
+
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          const chunk = decoder.decode(value, { stream: true });
+          fullReply += chunk;
+          setMessages((prev) =>
+            prev.map((m) => (m.id === botId ? { ...m, text: fullReply } : m))
+          );
+        }
+
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === botId
+              ? { ...m, text: fullReply, isStreaming: false, symptomLogged: symptomFlag }
+              : m
+          )
+        );
+
+        if (shouldSpeak && fullReply.trim()) {
+          speak(fullReply, locale, botId);
+        }
+      } catch {
+        const fallbackMsg =
+          'Please verify with Dr. Meera Rao or Sunrise Clinic. Keep meals low-oil and low-sugar.';
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === botId ? { ...m, text: fallbackMsg, isStreaming: false } : m
+          )
+        );
+      } finally {
+        setIsStreamingReply(false);
+      }
+    },
+    [locale, speak]
+  );
+
+  const processInputText = useCallback(
+    (rawText: string, viaMic: boolean) => {
+      const clean = rawText.trim();
+      if (!clean) return;
+
+      const parsed = parseVoiceIntent(clean, activeMedicines);
+      if (parsed.type === 'LOG_MED_TAKEN' || parsed.type === 'LOG_BP') {
+        setPendingAction(parsed);
+        return;
+      }
+
+      if (parsed.type === 'ASK_AI_HEALTH_QUERY') {
+        setPendingAction(null);
+        askLocalLlm(parsed.question, viaMic || autoSpeak);
+      }
+    },
+    [activeMedicines, askLocalLlm, autoSpeak]
+  );
+
   const {
     isListening,
-    transcript,
     interimTranscript,
     isSupported,
     startListening,
@@ -60,308 +222,326 @@ export default function VoiceLoggingPage() {
   } = useSpeech({
     locale,
     onFinalTranscript: (finalText) => {
-      const parsed = parseVoiceIntent(finalText);
-      setDetectedIntent(parsed);
+      setInputText('');
+      processInputText(finalText, true);
     },
   });
 
-  // Re-parse when live transcript or typed input changes
-  const activeText = transcript || interimTranscript || typedInput;
-
-  useEffect(() => {
-    if (activeText) {
-      const parsed = parseVoiceIntent(activeText);
-      setDetectedIntent(parsed);
-    }
-  }, [activeText]);
-
   const handleMicToggle = () => {
+    stop();
     if (isListening) {
       stopListening();
     } else {
-      setSuccessMessage(null);
       resetTranscript();
-      setTypedInput('');
-      setDetectedIntent(null);
       startListening(locale);
     }
   };
 
-  const handleSamplePhrase = (phrase: string) => {
-    setTypedInput(phrase);
-    const parsed = parseVoiceIntent(phrase);
-    setDetectedIntent(parsed);
+  const handleFormSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!inputText.trim() || isStreamingReply) return;
+    const text = inputText;
+    setInputText('');
+    processInputText(text, false);
   };
 
-  const handleConfirmIntent = async () => {
-    if (!detectedIntent || detectedIntent.type === 'UNKNOWN') return;
-
-    setIsSubmitting(true);
+  const handleConfirmAction = async () => {
+    if (!pendingAction) return;
+    setIsConfirmingAction(true);
 
     try {
-      if (detectedIntent.type === 'LOG_MED_TAKEN') {
-        await fetch(`/api/patients/${HERO_PATIENT.id}/med-log`, {
+      if (pendingAction.type === 'LOG_MED_TAKEN') {
+        const targetMedId = pendingAction.medicineId || activeMedicines[0]?.id || 'm1';
+        const targetMedLabel =
+          pendingAction.medicineName || activeMedicines[0]?.name || 'Metformin 500mg';
+
+        const res = await fetch(`/api/patients/${PATIENT_ID}/med-log`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            medicineId: 'med-metformin-night',
-            status: 'taken',
-          }),
+          body: JSON.stringify({ medicineId: targetMedId, status: 'taken' }),
         });
-        setSuccessMessage('Dose logged as taken!');
-      } else if (detectedIntent.type === 'LOG_BP') {
-        await fetch(`/api/patients/${HERO_PATIENT.id}/vitals`, {
+
+        if (res.ok) {
+          const confirmMsg = `Logged ${targetMedLabel} as taken ✓`;
+          setMessages((prev) => [
+            ...prev,
+            { id: `u-${Date.now()}`, role: 'user', text: pendingAction.rawText },
+            { id: `a-${Date.now() + 1}`, role: 'assistant', text: confirmMsg },
+          ]);
+          showToast(t('med_logged', locale));
+          if (autoSpeak) speak(confirmMsg, locale);
+        }
+      } else if (pendingAction.type === 'LOG_BP') {
+        const res = await fetch(`/api/patients/${PATIENT_ID}/vitals`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             type: 'bp',
-            valueA: detectedIntent.systolic,
-            valueB: detectedIntent.diastolic,
+            valueA: pendingAction.systolic,
+            valueB: pendingAction.diastolic,
+            source: 'manual',
           }),
         });
-        setSuccessMessage(`BP ${detectedIntent.systolic}/${detectedIntent.diastolic} mmHg recorded!`);
-      }
-    } catch {
-      setSuccessMessage('Recorded successfully (Offline safe)!');
-    }
 
-    setIsSubmitting(false);
-    setTimeout(() => {
-      router.push('/patient');
-    }, 1800);
+        if (res.ok) {
+          const confirmMsg = `Saved blood pressure ${pendingAction.systolic}/${pendingAction.diastolic} mmHg ✓`;
+          setMessages((prev) => [
+            ...prev,
+            { id: `u-${Date.now()}`, role: 'user', text: pendingAction.rawText },
+            { id: `a-${Date.now() + 1}`, role: 'assistant', text: confirmMsg },
+          ]);
+          showToast(t('reading_saved', locale));
+          if (autoSpeak) speak(confirmMsg, locale);
+        }
+      }
+    } finally {
+      setPendingAction(null);
+      setIsConfirmingAction(false);
+    }
   };
 
+  const conditionBadge =
+    detail?.profile?.conditions?.join(' · ') || 'Diabetes Type 2 · Hypertension';
+
   return (
-    <div className="min-h-screen bg-[#F4F1EA] md:bg-[#EAE6DB] flex flex-col items-center">
-      <div className="w-full max-w-md min-h-screen bg-[#FAF8F5] text-ink-900 flex flex-col relative md:border-x-2 md:border-ink-900 md:shadow-[0_10px_35px_rgba(0,0,0,0.08)] pb-28 sm:pb-32">
-        <PatientHeader
-          locale={locale}
-          onLocaleChange={handleLocaleChange}
-          showBack
-          backHref="/patient"
-          title="Voice Health Logger"
-        />
+    <div className="min-h-screen bg-[#F8FAFC] text-[#0F172A] pb-32">
+      <PatientHeader
+        locale={locale}
+        onLocaleChange={changeLocale}
+        showBack
+        backHref="/patient"
+        title={t('voice.title', locale)}
+      />
 
-        <main className="w-full px-3.5 sm:px-4 pt-3.5 space-y-4 sm:space-y-5">
-        {/* Intro Banner */}
-        <div className="text-center space-y-0.5">
-          <h2 className="font-display font-bold text-xl sm:text-2xl text-ink-900">
-            Speak in your language
-          </h2>
-          <p className="font-body text-xs sm:text-sm text-ink-500 font-medium">
-            Supports Hindi, Kannada, and Indian English
-          </p>
-        </div>
-
-        {/* Central Voice Mic Button */}
-        <div className="py-3 flex justify-center">
-          <VoiceButton
-            isListening={isListening}
-            onClick={handleMicToggle}
-            languageLabel={locale === 'hi' ? 'हिंदी (hi-IN)' : locale === 'kn' ? 'ಕನ್ನಡ (kn-IN)' : 'English (en-IN)'}
-          />
-        </div>
-
-        {/* Live Speech Recognition Transcript Box */}
-        <div className="min-h-[110px] p-4 sm:p-5 bg-white rounded-[20px] border-2 border-ink-900 shadow-[3px_3px_0px_#121214] flex flex-col justify-between">
+      <main className="max-w-3xl mx-auto px-4 pt-4 space-y-4">
+        {/* Personalized Local LLM Header */}
+        <section className="bg-white border border-[#E2E8F0] rounded-2xl p-4 sm:p-5 shadow-[0_1px_2px_rgba(15,23,42,0.04)] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="space-y-1">
-            <span className="font-body text-[11px] font-bold uppercase text-ink-500 tracking-wider block">
-              {isListening ? 'Listening live...' : 'Recognized Speech'}
-            </span>
-            <p className="font-display font-semibold text-lg sm:text-xl text-ink-900 min-h-[36px] leading-snug">
-              {activeText || (
-                <span className="text-ink-400 font-body font-normal text-sm sm:text-base">
-                  Tap the mic and say &quot;maine dawai le li&quot; or &quot;BP 130 by 85&quot;
-                </span>
-              )}
+            <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#F0FDFA] border border-[#CCFBF1] text-[#0F766E] text-xs font-medium">
+              <Cpu className="w-3.5 h-3.5" />
+              <span>{t('voice.local_llm_badge', locale)}</span>
+            </div>
+            <p className="text-sm font-medium text-[#334155]">
+              Tailored for {detail?.profile?.name || 'Ramesh K.'} · {conditionBadge}
             </p>
           </div>
 
-          {isListening && (
-            <div className="flex items-center gap-2 pt-2 text-xs text-teal-700 font-bold">
-              <span className="w-2.5 h-2.5 rounded-full bg-teal-500 animate-ping" />
-              <span>Listening to voice...</span>
-            </div>
-          )}
-        </div>
+          <button
+            type="button"
+            onClick={() => {
+              if (autoSpeak) stop();
+              setAutoSpeak(!autoSpeak);
+            }}
+            aria-pressed={autoSpeak}
+            className={`inline-flex items-center gap-2 min-h-[44px] px-3.5 rounded-xl border text-xs font-semibold transition-colors cursor-pointer shrink-0 ${
+              autoSpeak
+                ? 'bg-[#F0FDFA] border-[#CCFBF1] text-[#0F766E]'
+                : 'bg-white border-[#E2E8F0] text-[#475569]'
+            }`}
+          >
+            {autoSpeak ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
+            <span>{t('voice.auto_speak', locale)}</span>
+          </button>
+        </section>
 
-        {/* Intent Detection & Confirmation Card */}
-        {detectedIntent && (
-          <div className="animate-fadeIn transition-all duration-300">
-            {detectedIntent.type === 'LOG_MED_TAKEN' && (
-              <div className="p-4 sm:p-5 bg-[#DCFCE7] rounded-[20px] border-2 border-ink-900 shadow-[3px_3px_0px_#121214] space-y-3">
-                <div className="flex items-start gap-3">
-                  <div className="p-2.5 bg-[#D4F77C] text-ink-900 border border-ink-900 rounded-xl">
-                    <Pill className="w-6 h-6 stroke-[2.5]" />
-                  </div>
-                  <div className="flex-1">
-                    <div className="flex items-center justify-between">
-                      <span className="font-data text-xs font-bold uppercase text-emerald-900 tracking-wider">
-                        Intent Detected
-                      </span>
-                      <span className="font-data text-xs font-bold bg-white px-2 py-0.5 rounded-full border border-ink-900 text-ink-900">
-                        {Math.round(detectedIntent.confidence * 100)}% match
-                      </span>
-                    </div>
-                    <h3 className="font-display font-bold text-lg sm:text-xl text-ink-900 mt-0.5">
-                      Mark Medicine as Taken
-                    </h3>
-                    <p className="font-body text-xs sm:text-sm text-ink-700 font-medium mt-0.5">
-                      {detectedIntent.medicineName
-                        ? `Medicine: ${detectedIntent.medicineName}`
-                        : 'Scheduled dose (Metformin 500mg)'}
-                    </p>
-                  </div>
-                </div>
-
-                <button
-                  type="button"
-                  disabled={isSubmitting}
-                  onClick={handleConfirmIntent}
-                  className="w-full bg-[#D4F77C] hover:bg-[#CEF267] text-ink-900 font-display font-bold text-base min-h-[48px] rounded-xl border-2 border-ink-900 shadow-[2px_2px_0px_#121214] active:translate-y-0.5 flex items-center justify-center gap-2 transition-all cursor-pointer"
-                >
-                  <CheckCircle2 className="w-5 h-5 stroke-[2.5]" />
-                  <span>Confirm & Save</span>
-                </button>
-              </div>
-            )}
-
-            {detectedIntent.type === 'LOG_BP' && (
-              <div className="p-4 sm:p-5 bg-[#E6F9F7] rounded-[20px] border-2 border-ink-900 shadow-[3px_3px_0px_#121214] space-y-3">
-                <div className="flex items-start gap-3">
-                  <div className="p-2.5 bg-[#FF5C98] text-white border border-ink-900 rounded-xl">
-                    <Heart className="w-6 h-6 stroke-[2.5]" />
-                  </div>
-                  <div className="flex-1">
-                    <div className="flex items-center justify-between">
-                      <span className="font-data text-xs font-bold uppercase text-teal-900 tracking-wider">
-                        Intent Detected
-                      </span>
-                      <span className="font-data text-xs font-bold bg-white px-2 py-0.5 rounded-full border border-ink-900 text-ink-900">
-                        {Math.round(detectedIntent.confidence * 100)}% match
-                      </span>
-                    </div>
-                    <h3 className="font-display font-bold text-lg sm:text-xl text-ink-900 mt-0.5">
-                      Log Blood Pressure Reading
-                    </h3>
-                    <p className="font-data font-bold text-xl sm:text-2xl text-ink-900 mt-1">
-                      {detectedIntent.systolic} / {detectedIntent.diastolic}{' '}
-                      <span className="text-xs font-body font-normal text-ink-500">
-                        mmHg
-                      </span>
-                    </p>
-                  </div>
-                </div>
-
-                <button
-                  type="button"
-                  disabled={isSubmitting}
-                  onClick={handleConfirmIntent}
-                  className="w-full bg-[#D4F77C] hover:bg-[#CEF267] text-ink-900 font-display font-bold text-base min-h-[48px] rounded-xl border-2 border-ink-900 shadow-[2px_2px_0px_#121214] active:translate-y-0.5 flex items-center justify-center gap-2 transition-all cursor-pointer"
-                >
-                  <CheckCircle2 className="w-5 h-5 stroke-[2.5]" />
-                  <span>Confirm & Save</span>
-                </button>
-              </div>
-            )}
-
-            {detectedIntent.type === 'UNKNOWN' && (
-              <div className="p-3.5 bg-[#FEF3C7] rounded-[18px] border-2 border-ink-900 shadow-[2px_2px_0px_#121214] flex items-start gap-2.5">
-                <AlertCircle className="w-5 h-5 text-amber-700 shrink-0 mt-0.5" />
-                <div className="text-xs text-ink-900 font-body">
-                  <p className="font-bold">Phrase not recognized as a health action</p>
-                  <p className="mt-0.5 text-ink-700">
-                    Try saying &quot;maine dawai le li&quot; or &quot;BP 130 by 85&quot;.
-                  </p>
-                </div>
-              </div>
-            )}
+        {/* Quick Food & Action Chips */}
+        <section className="space-y-2">
+          <div className="flex items-center gap-2 overflow-x-auto pb-1">
+            {FOOD_QUICK_CHIPS.map((chip) => (
+              <button
+                key={chip}
+                type="button"
+                disabled={isStreamingReply}
+                onClick={() => processInputText(chip, false)}
+                className="shrink-0 max-w-[270px] truncate px-3.5 min-h-[40px] rounded-full bg-white border border-[#E2E8F0] hover:border-[#0D9488] hover:text-[#0F766E] text-xs sm:text-sm font-medium text-[#334155] transition-colors cursor-pointer"
+                title={chip}
+              >
+                {chip}
+              </button>
+            ))}
           </div>
-        )}
-
-        {/* Demo Quick-Test Chips */}
-        <div className="pt-1 space-y-2">
-          <div className="flex items-center justify-between px-0.5">
-            <span className="font-body text-xs font-bold text-ink-600 flex items-center gap-1">
-              <Sparkles className="w-3.5 h-3.5 text-ink-900" />
-              Demo Quick-Click Phrases:
-            </span>
-            <button
-              onClick={() => setShowTypedInput(!showTypedInput)}
-              className="text-xs font-display font-bold text-ink-900 hover:text-teal-700 flex items-center gap-1 underline"
-            >
-              <Keyboard className="w-3.5 h-3.5" />
-              {showTypedInput ? 'Hide typing' : 'Type manually'}
-            </button>
-          </div>
-
           <div className="flex flex-wrap gap-2">
             <button
-              onClick={() => handleSamplePhrase('maine dawai le li')}
-              className="px-3.5 py-2 rounded-full bg-white border-2 border-ink-900 font-body text-xs font-bold text-ink-900 hover:bg-[#FAF8F5] shadow-[2px_2px_0px_#121214] active:translate-y-0.5 transition-all cursor-pointer"
+              type="button"
+              onClick={() => processInputText('Maine dawai le li', false)}
+              className="px-3.5 min-h-[38px] rounded-full bg-[#F0FDFA] border border-[#CCFBF1] text-xs font-semibold text-[#0F766E] hover:bg-[#CCFBF1]/60 transition-colors cursor-pointer"
             >
-              &quot;maine dawai le li&quot; (Hindi)
+              ✓ &quot;Maine dawai le li&quot;
             </button>
             <button
-              onClick={() => handleSamplePhrase('medicine tiskondidini')}
-              className="px-3.5 py-2 rounded-full bg-white border-2 border-ink-900 font-body text-xs font-bold text-ink-900 hover:bg-[#FAF8F5] shadow-[2px_2px_0px_#121214] active:translate-y-0.5 transition-all cursor-pointer"
+              type="button"
+              onClick={() => processInputText('BP 138 by 86', false)}
+              className="px-3.5 min-h-[38px] rounded-full bg-[#F8FAFC] border border-[#E2E8F0] text-xs font-semibold text-[#334155] hover:bg-[#F1F5F9] transition-colors cursor-pointer"
             >
-              &quot;medicine tiskondidini&quot; (Kannada)
-            </button>
-            <button
-              onClick={() => handleSamplePhrase('BP 138 by 88')}
-              className="px-3.5 py-2 rounded-full bg-white border-2 border-ink-900 font-body text-xs font-bold text-ink-900 hover:bg-[#FAF8F5] shadow-[2px_2px_0px_#121214] active:translate-y-0.5 transition-all cursor-pointer"
-            >
-              &quot;BP 138 by 88&quot; (Vitals)
+              ♥ &quot;BP 138 by 86&quot;
             </button>
           </div>
-        </div>
+        </section>
 
-        {/* Typed Input Fallback */}
-        {showTypedInput && (
-          <div className="p-3.5 bg-white rounded-[18px] border-2 border-ink-900 shadow-[2px_2px_0px_#121214] space-y-2">
-            <label className="block font-body text-xs font-bold text-ink-700">
-              Typed Input Fallback:
-            </label>
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={typedInput}
-                onChange={(e) => setTypedInput(e.target.value)}
-                placeholder="Type 'took my medicine' or 'BP 130 85'..."
-                className="flex-1 font-body text-sm px-3.5 py-2.5 rounded-xl border-2 border-ink-900 focus:outline-none focus:ring-2 focus:ring-ink-900"
-              />
+        {/* Action Confirmation Card (when LOG_MED_TAKEN or LOG_BP detected) */}
+        {pendingAction && (pendingAction.type === 'LOG_MED_TAKEN' || pendingAction.type === 'LOG_BP') && (
+          <div className="bg-white border border-[#0D9488] rounded-2xl p-4 sm:p-5 shadow-md space-y-3">
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <span className="w-10 h-10 rounded-xl bg-[#F0FDFA] text-[#0D9488] flex items-center justify-center shrink-0">
+                  {pendingAction.type === 'LOG_MED_TAKEN' ? (
+                    <Pill className="w-5 h-5" />
+                  ) : (
+                    <Heart className="w-5 h-5" />
+                  )}
+                </span>
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wider text-[#0D9488]">
+                    Voice Action Detected ({Math.round(pendingAction.confidence * 100)}%)
+                  </p>
+                  <h3 className="text-base sm:text-lg font-semibold text-[#0F172A]">
+                    {pendingAction.type === 'LOG_MED_TAKEN'
+                      ? `Mark ${pendingAction.medicineName || activeMedicines[0]?.name || 'Metformin'} as Taken?`
+                      : `Save BP ${pendingAction.systolic}/${pendingAction.diastolic} mmHg?`}
+                  </h3>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2.5">
               <button
                 type="button"
-                onClick={() => {
-                  const parsed = parseVoiceIntent(typedInput);
-                  setDetectedIntent(parsed);
-                }}
-                className="px-4 py-2 bg-[#D4F77C] hover:bg-[#CEF267] text-ink-900 font-display font-bold text-xs rounded-xl border-2 border-ink-900 shadow-[1.5px_1.5px_0px_#121214] active:translate-y-0.5"
+                disabled={isConfirmingAction}
+                onClick={handleConfirmAction}
+                className="flex-1 min-h-[48px] rounded-xl bg-[#0D9488] hover:bg-[#0F766E] text-white text-sm font-semibold flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
               >
-                Parse
+                {isConfirmingAction ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <CheckCircle2 className="w-4 h-4" />
+                )}
+                <span>Confirm &amp; Save</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setPendingAction(null)}
+                className="min-h-[48px] px-4 rounded-xl border border-[#E2E8F0] bg-white text-sm font-medium text-[#475569] cursor-pointer"
+              >
+                Cancel
               </button>
             </div>
           </div>
         )}
 
-        {!isSupported && (
-          <p className="text-xs text-ink-800 bg-[#FEF3C7] p-2.5 rounded-xl border-2 border-ink-900 text-center font-body font-semibold">
-            Note: Speech recognition runs via Chrome Web Speech API. Use the quick-click buttons above if your browser mic is blocked.
-          </p>
-        )}
+        {/* Chat Stream */}
+        <section className="space-y-3 min-h-[260px]">
+          {messages.map((msg) => {
+            const isUser = msg.role === 'user';
+            const isThisSpeaking = isSpeaking && speakingId === msg.id;
+
+            return (
+              <div
+                key={msg.id}
+                className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}
+              >
+                <div
+                  className={`max-w-[88%] rounded-2xl px-4 py-3.5 space-y-2 ${
+                    isUser
+                      ? 'bg-[#0F172A] text-white rounded-br-sm'
+                      : 'bg-white border border-[#E2E8F0] text-[#0F172A] rounded-bl-sm shadow-[0_1px_2px_rgba(15,23,42,0.04)]'
+                  }`}
+                >
+                  <p className="text-base leading-relaxed whitespace-pre-wrap">
+                    {msg.text || (msg.isStreaming ? 'Thinking...' : '')}
+                  </p>
+
+                  {!isUser && msg.symptomLogged && (
+                    <span className="inline-block text-xs font-medium px-2.5 py-0.5 rounded-full bg-[#FFFBEB] text-[#B45309] border border-[#FDE68A]">
+                      Symptom shared with Dr. Meera Rao
+                    </span>
+                  )}
+
+                  {!isUser && !msg.isStreaming && msg.text && (
+                    <div className="pt-1 flex items-center justify-between gap-3">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          isThisSpeaking ? stop() : speak(msg.text, locale, msg.id)
+                        }
+                        className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#0D9488] hover:text-[#0F766E] min-h-[34px] cursor-pointer"
+                      >
+                        {isThisSpeaking ? (
+                          <>
+                            <Square className="w-3.5 h-3.5 fill-current" />
+                            <span>{t('voice.stop_reading', locale)}</span>
+                          </>
+                        ) : (
+                          <>
+                            <Volume2 className="w-3.5 h-3.5" />
+                            <span>{t('voice.read_aloud', locale)}</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+
+          {interimTranscript && (
+            <div className="p-3 rounded-xl bg-[#F0FDFA] border border-[#CCFBF1] text-sm text-[#0F766E]">
+              {t('voice.listening', locale)} &ldquo;{interimTranscript}&rdquo;
+            </div>
+          )}
+          <div ref={chatEndRef} />
+        </section>
+
+        {/* Bottom Voice + Text Input Dock */}
+        <section className="bg-white border border-[#E2E8F0] rounded-2xl p-3 sm:p-4 shadow-sm space-y-3">
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={handleMicToggle}
+              aria-pressed={isListening}
+              aria-label={isListening ? t('voice.listening', locale) : t('voice.tap_to_speak', locale)}
+              className={`w-14 h-14 rounded-full flex items-center justify-center shrink-0 transition-all cursor-pointer ${
+                isListening
+                  ? 'bg-[#DC2626] text-white ring-4 ring-[#FECACA]'
+                  : 'bg-[#0D9488] hover:bg-[#0F766E] text-white shadow-sm'
+              }`}
+            >
+              <Mic className="w-6 h-6" />
+            </button>
+
+            <form onSubmit={handleFormSubmit} className="flex-1 flex items-center gap-2">
+              <input
+                type="text"
+                value={inputText}
+                onChange={(e) => setInputText(e.target.value)}
+                placeholder={t('voice.ask_placeholder', locale)}
+                className="flex-1 min-h-[48px] px-4 rounded-xl border border-[#CBD5E1] text-base text-[#0F172A] placeholder:text-[#94A3B8] focus:outline-none focus:ring-2 focus:ring-[#0D9488]"
+              />
+              <button
+                type="submit"
+                disabled={!inputText.trim() || isStreamingReply}
+                className="min-h-[48px] px-4 sm:px-5 rounded-xl bg-[#0D9488] hover:bg-[#0F766E] text-white text-sm font-semibold inline-flex items-center gap-1.5 cursor-pointer disabled:opacity-50 shrink-0"
+              >
+                {isStreamingReply ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Send className="w-4 h-4" />
+                )}
+                <span className="hidden sm:inline">{t('voice.send', locale)}</span>
+              </button>
+            </form>
+          </div>
+
+          {!isSupported && (
+            <p className="text-xs text-[#64748B]">
+              Microphone input uses Web Speech API in Chrome/Edge. Quick chips and typed input always work.
+            </p>
+          )}
+        </section>
       </main>
 
-      {/* Success Notification */}
-      {successMessage && (
-        <div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-50 bg-ink-900 text-white px-5 py-3 rounded-full border-2 border-ink-900 shadow-[3px_3px_0px_#121214] flex items-center gap-2 font-display text-sm font-semibold animate-bounce">
-          <CheckCircle2 className="w-5 h-5 text-[#D4F77C]" />
-          <span>{successMessage}</span>
-        </div>
-      )}
-
+      <PatientToast message={toast} />
       <BottomNav locale={locale} />
-      </div>
     </div>
   );
 }

@@ -38,6 +38,7 @@ import {
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { RiskBadge, type RiskBand } from "@/components/ui/RiskBadge";
+import { CareBridgeLogo } from "@/components/ui/CareBridgeLogo";
 import {
   DoodleDaisy,
   DoodleClaudCloud,
@@ -148,19 +149,7 @@ export default function LandingPage() {
       <header className="sticky top-0 z-50 bg-[#FBF9F4]/90 backdrop-blur-md border-b-2 border-ink-900 px-6 sm:px-12 py-4">
         <div className="max-w-[1240px] mx-auto flex items-center justify-between">
           {/* Left: Daisy Logo & Brand */}
-          <Link href="/" className="group flex items-center gap-3 select-none">
-            <div className="w-8 h-8 rounded-full border-2 border-ink-900 bg-white flex items-center justify-center shadow-[2px_2px_0px_#121214] group-hover:rotate-12 transition-transform">
-              <DoodleDaisy size={20} color="#121214" centerColor="#FEE159" />
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="font-serif font-black text-2xl tracking-tight text-ink-900">
-                carebridge
-              </span>
-              <span className="hidden sm:inline-block font-mono text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-[#EDE9FE] border border-ink-900 text-ink-900">
-                crce • 2026
-              </span>
-            </div>
-          </Link>
+          <CareBridgeLogo size="md" showBadge={true} href="/" />
 
           {/* Center Navigation Links */}
           <nav className="hidden md:flex items-center gap-6 font-mono text-xs font-bold text-ink-700">
@@ -1104,16 +1093,12 @@ export default function LandingPage() {
       ───────────────────────────────────────────────────────────── */}
       <footer className="bg-white border-t-2 border-ink-900 py-12 px-6 sm:px-12 mt-auto">
         <div className="max-w-[1240px] mx-auto flex flex-col sm:flex-row items-center justify-between gap-6">
-          <div className="flex items-center gap-3">
-            <DoodleDaisy size={24} color="#121214" />
-            <div>
-              <span className="font-serif font-black text-lg text-ink-900 tracking-tight">
-                carebridge
-              </span>
-              <p className="font-mono text-[11px] text-ink-500">
-                Vedesh • Aman • Swapnil • Aryan • CRCE Hackathon
-              </p>
-            </div>
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
+            <CareBridgeLogo size="sm" href="/" />
+            <span className="text-ink-400 font-mono text-xs hidden sm:inline">•</span>
+            <p className="font-mono text-[11px] text-ink-500">
+              Vedesh • Aman • Swapnil • Aryan • CRCE Hackathon
+            </p>
           </div>
 
           <div className="text-center sm:text-right">

@@ -88,3 +88,6 @@ export type { GoalItemProps } from "./GoalItem";
 
 export { DoctorNoteCard } from "./DoctorNoteCard";
 export type { DoctorNoteCardProps, DoctorNoteReminder, DoctorNoteGoal } from "./DoctorNoteCard";
+
+export { CareBridgeLogo, CareBridgeEmblem } from "./CareBridgeLogo";
+export type { CareBridgeLogoProps } from "./CareBridgeLogo";

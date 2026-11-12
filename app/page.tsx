@@ -149,7 +149,7 @@ export default function LandingPage() {
       <header className="sticky top-0 z-50 bg-[#FBF9F4]/90 backdrop-blur-md border-b-2 border-ink-900 px-6 sm:px-12 py-4">
         <div className="max-w-[1240px] mx-auto flex items-center justify-between">
           {/* Left: Daisy Logo & Brand */}
-          <CareBridgeLogo size="md" showBadge={true} href="/" />
+          <CareBridgeLogo size="md" href="/" />
 
           {/* Center Navigation Links */}
           <nav className="hidden md:flex items-center gap-6 font-mono text-xs font-bold text-ink-700">

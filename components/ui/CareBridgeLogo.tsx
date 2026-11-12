@@ -79,11 +79,6 @@ export const CareBridgeLogo: React.FC<CareBridgeLogoProps> = ({
       {showWordmark && (
         <span className={`font-display font-bold ${textSize} tracking-tight leading-none text-[#0F172A] flex items-center gap-2`}>
           <span>Care<span className="text-[#0D9488]">Bridge</span></span>
-          {showBadge && (
-            <span className="hidden sm:inline-block text-[10px] font-mono font-semibold uppercase px-2 py-0.5 rounded-full bg-[#CCFBF1] text-[#0F766E] border border-[#99F6E4]">
-              CRCE • 2026
-            </span>
-          )}
         </span>
       )}
     </div>

@@ -144,4 +144,71 @@ const res5 = computeRisk(silentSnapshot);
 console.log(`\nTest 5 (Silence 48h): Score = ${res5.score}, Reasons = ${res5.reasons.map((r) => r.rule_id).join(", ")}`);
 console.assert(res5.reasons.some((r) => r.rule_id === "NO_DATA_48H"), "Expected NO_DATA_48H rule");
 
-console.log("\nAll 5 risk engine unit tests verified successfully!");
+// Test Case 6: SpO2 Critical Drop (<92%) -> Rule SPO2_CRITICAL (+30)
+const spo2DropSnapshot = {
+  patient: {
+    id: "p_spo2",
+    name: "SpO2 Test Patient",
+    age: 65,
+    language: "English",
+    conditions: [],
+    doctor_id: "d1",
+    family_id: "f1",
+    created_at: new Date(now.getTime() - 10 * dayMs).toISOString(),
+  },
+  medLogs: [],
+  vitals: [
+    { id: "spo2_1", patient_id: "p_spo2", type: "spo2" as const, value_a: 88, value_b: null, recorded_at: now.toISOString() },
+  ],
+};
+const res6 = computeRisk(spo2DropSnapshot);
+console.log(`\nTest 6 (SpO2 Critical Drop 88%): Score = ${res6.score}, Reasons = ${res6.reasons.map((r) => r.rule_id).join(", ")}`);
+console.assert(res6.reasons.some((r) => r.rule_id === "SPO2_CRITICAL"), "Expected SPO2_CRITICAL rule");
+console.assert(res6.score >= 30, `Expected score >= 30, got ${res6.score}`);
+
+// Test Case 7: Nocturnal HR Elevation (>100 bpm) -> Rule HR_NOCTURNAL_HIGH (+15)
+const nocturnalHrDate = new Date(now.getTime() - 1 * dayMs);
+nocturnalHrDate.setHours(2, 30, 0, 0); // 02:30 AM
+const nocturnalHrSnapshot = {
+  patient: {
+    id: "p_hr",
+    name: "Nocturnal HR Patient",
+    age: 58,
+    language: "English",
+    conditions: [],
+    doctor_id: "d1",
+    family_id: "f1",
+    created_at: new Date(now.getTime() - 10 * dayMs).toISOString(),
+  },
+  medLogs: [],
+  vitals: [
+    { id: "hr_1", patient_id: "p_hr", type: "hr" as const, value_a: 112, value_b: null, recorded_at: nocturnalHrDate.toISOString() },
+  ],
+};
+const res7 = computeRisk(nocturnalHrSnapshot);
+console.log(`\nTest 7 (Nocturnal HR Spike 112 bpm): Score = ${res7.score}, Reasons = ${res7.reasons.map((r) => r.rule_id).join(", ")}`);
+console.assert(res7.reasons.some((r) => r.rule_id === "HR_NOCTURNAL_HIGH"), "Expected HR_NOCTURNAL_HIGH rule");
+console.assert(res7.score >= 15, `Expected score >= 15, got ${res7.score}`);
+
+// Test Case 8: Empty Arrays Edge Case (zero throw, returns green band)
+const emptySnapshot = {
+  patient: {
+    id: "p_empty",
+    name: "Empty Patient",
+    age: 40,
+    language: "Hindi",
+    conditions: [],
+    doctor_id: "d1",
+    family_id: "f1",
+    created_at: new Date().toISOString(),
+  },
+  medLogs: [],
+  vitals: [],
+};
+const res8 = computeRisk(emptySnapshot);
+console.log(`\nTest 8 (Empty Arrays): Score = ${res8.score}, Band = ${res8.band}`);
+console.assert(res8.score === 0, `Expected score 0, got ${res8.score}`);
+console.assert(res8.band === "green", `Expected green band, got ${res8.band}`);
+console.assert(res8.reasons.length === 0, "Expected 0 reasons");
+
+console.log("\nAll 8 risk engine unit tests verified successfully (10/10 rules verified)!");

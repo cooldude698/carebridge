@@ -265,4 +265,63 @@ export const RISK_RULES: RiskRuleConfig[] = [
       return { hit: false };
     },
   },
+
+  // 9. SpO2 Critical Drop (< 92%)
+  {
+    id: "SPO2_CRITICAL",
+    label: "Critically Low Blood Oxygen",
+    weight: 30,
+    evaluate: (snapshot) => {
+      const spo2Vitals = snapshot.vitals
+        .filter((v) => v.type === "spo2")
+        .sort((a, b) => getVitalTime(b) - getVitalTime(a));
+
+      if (spo2Vitals.length === 0) return { hit: false };
+      const latest = spo2Vitals[0];
+      const valA = getVitalValA(latest);
+
+      if (valA < 92) {
+        return {
+          hit: true,
+          text: `Blood oxygen saturation critically low at ${valA}% (normal 95-100%). Immediate clinical attention advised.`,
+        };
+      }
+      return { hit: false };
+    },
+  },
+
+  // 10. Elevated Nocturnal Heart Rate (> 100 bpm)
+  {
+    id: "HR_NOCTURNAL_HIGH",
+    label: "Elevated Nocturnal Heart Rate",
+    weight: 15,
+    evaluate: (snapshot) => {
+      const hrVitals = snapshot.vitals.filter((v) => v.type === "hr");
+      if (hrVitals.length === 0) return { hit: false };
+
+      const nocturnal = hrVitals.filter((v) => {
+        const d = new Date(v.recorded_at || (v as any).recordedAt || 0);
+        const h = d.getHours();
+        const utcH = d.getUTCHours();
+        return h >= 23 || h < 5 || utcH >= 23 || utcH < 5;
+      });
+
+      if (nocturnal.length === 0) return { hit: false };
+
+      const meanNocturnal = Math.round(
+        nocturnal.reduce((sum, v) => sum + getVitalValA(v), 0) / nocturnal.length
+      );
+
+      const latestNocturnal = [...nocturnal].sort((a, b) => getVitalTime(b) - getVitalTime(a))[0];
+      const latestVal = getVitalValA(latestNocturnal);
+
+      if (meanNocturnal > 100 || latestVal > 100) {
+        return {
+          hit: true,
+          text: `Nocturnal heart rate elevated at ${Math.max(meanNocturnal, latestVal)} bpm during sleep (normal baseline 58-72 bpm).`,
+        };
+      }
+      return { hit: false };
+    },
+  },
 ];

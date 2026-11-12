@@ -22,6 +22,14 @@ import {
   PatientGoal,
   GoalsResponse,
   DoctorNoteReminder,
+  WearableDevice,
+  SymptomLog,
+  DiagnosisReport,
+  Prescription,
+  PrescribedMedicine,
+  LifestyleTarget,
+  WatchSyncPayload,
+  WhatsAppNotificationLog,
 } from "@/lib/types";
 import { computeRisk } from "@/lib/risk/compute";
 
@@ -41,6 +49,12 @@ export interface CareBridgeState {
   missedDoseEscalations: Record<string, { logId: string; patientId: string; detectedAt: number; firedStages: Set<"reminder" | "family" | "doctor"> }>;
   doctorNotes: DoctorNote[];
   patientGoals: PatientGoal[];
+  wearableDevices: WearableDevice[];
+  symptomLogs: SymptomLog[];
+  diagnosisReports: DiagnosisReport[];
+  prescriptions: Prescription[];
+  aiQaLogs: { id: string; patient_id: string; question: string; answer: string; model_used: string; created_at: string }[];
+  whatsappLogs: WhatsAppNotificationLog[];
 }
 
 // Helper to generate 14 days of realistic baseline data
@@ -148,9 +162,9 @@ function createInitialState(): CareBridgeState {
     const dayIso = dayDate.toISOString();
 
     // 1. Ramesh K (p1)
-    // Days 14 to 5: Consistent taken doses, normal BP, 5,200 steps
-    // Days 4 to 1: Creeping up BP (140-144), steps dropping to 2,800, missed 1 dose
-    const isP1Recent = offset <= 4;
+    // Days 14 to 8: Consistent taken doses, normal BP (126), 5,400 steps
+    // Days 7 to 1: Creeping up BP (140-144), steps dropping to 2,800, missed 1 dose -> starts Yellow (40)
+    const isP1Recent = offset <= 7;
 
     medLogs.push({
       id: `p1-m1-am-${offset}`,
@@ -211,6 +225,42 @@ function createInitialState(): CareBridgeState {
       value_b: null,
       recorded_at: new Date(dayDate.setHours(7, 30, 0, 0)).toISOString(),
     });
+
+    // 7-day baseline SpO2, Calories, and Sleep for Ramesh K. (p1)
+    if (offset <= 7) {
+      vitals.push({
+        id: `p1-spo2-${offset}`,
+        patient_id: "p1",
+        type: "spo2",
+        value_a: 96 + (offset % 3), // 96 - 98%
+        value_b: null,
+        recorded_at: new Date(dayDate.setHours(11, 0, 0, 0)).toISOString(),
+        source: "wearable",
+        device_id: "dev-fit-p1",
+      });
+
+      vitals.push({
+        id: `p1-cal-${offset}`,
+        patient_id: "p1",
+        type: "calories",
+        value_a: 280 + (offset % 5) * 30, // 280 - 400 kcal
+        value_b: null,
+        recorded_at: new Date(dayDate.setHours(21, 30, 0, 0)).toISOString(),
+        source: "wearable",
+        device_id: "dev-fit-p1",
+      });
+
+      vitals.push({
+        id: `p1-sleep-${offset}`,
+        patient_id: "p1",
+        type: "sleep",
+        value_a: parseFloat((6.2 + (offset % 4) * 0.3).toFixed(1)), // 6.2 - 7.1 hrs
+        value_b: null,
+        recorded_at: new Date(dayDate.setHours(7, 0, 0, 0)).toISOString(),
+        source: "wearable",
+        device_id: "dev-fit-p1",
+      });
+    }
 
     // 2. Anita S (p2)
     medLogs.push({
@@ -357,8 +407,8 @@ function createInitialState(): CareBridgeState {
     },
   ];
 
-  // Baseline normal HR readings for last 3 days at 02:00 (so initial state has no HR anomaly)
-  for (let d = 1; d <= 3; d++) {
+  // Baseline normal HR readings for last 7 days at 02:00 (so initial state has no HR anomaly)
+  for (let d = 1; d <= 7; d++) {
     const hrDay = new Date(now - d * dayMs);
     hrDay.setHours(2, 0, 0, 0);
     vitals.push({
@@ -368,12 +418,156 @@ function createInitialState(): CareBridgeState {
       value_a: 72,
       value_b: null,
       recorded_at: hrDay.toISOString(),
+      source: "wearable",
+      device_id: "dev-fit-p1",
     });
   }
 
   const briefs: Brief[] = [];
   const doctorActions: CareBridgeState["doctorActions"] = [];
   const missedDoseEscalations: CareBridgeState["missedDoseEscalations"] = {};
+
+  const wearableDevices: WearableDevice[] = [
+    {
+      id: "dev-fit-p1",
+      patient_id: "p1",
+      provider: "google_fit",
+      device_name: "WearOS Smartwatch (Google Fit Bridge)",
+      is_active: true,
+      last_synced_at: new Date(now - 15 * 60 * 1000).toISOString(),
+      created_at: new Date(now - 20 * dayMs).toISOString(),
+    },
+  ];
+
+  const symptomLogs: SymptomLog[] = [
+    {
+      id: "symp-p1-1",
+      patient_id: "p1",
+      raw_text: "Mild morning fatigue and slight heaviness in head",
+      language: "English",
+      extracted_symptoms: ["fatigue", "headache"],
+      severity_hint: "low",
+      created_at: new Date(now - 2 * dayMs).toISOString(),
+    },
+  ];
+
+  const diagnosisReports: DiagnosisReport[] = [
+    {
+      id: "diag-p1-1",
+      patient_id: "p1",
+      generated_at: new Date(now - 10 * dayMs).toISOString(),
+      ai_summary: "Baseline post-discharge evaluation. Mild systolic elevation with stable glycemic indices and normal nocturnal heart rate.",
+      risk_flags: [
+        {
+          type: "BP_ELEVATION",
+          severity: "medium",
+          value: "138/86 mmHg",
+          normalRange: "<120/80 mmHg",
+          message: "Mild systolic elevation noted during morning readings.",
+        },
+        {
+          type: "GLUCOSE_STABLE",
+          severity: "low",
+          value: "142 mg/dL",
+          normalRange: "70-130 mg/dL fasting",
+          message: "Fasting glucose slightly elevated; consistent with ongoing Metformin therapy.",
+        },
+      ],
+      urgency: "soon",
+      recommended_specialties: ["Cardiology", "Endocrinology"],
+      lifestyle_recommendations: [
+        "Maintain 4,500 daily steps",
+        "Limit sodium intake under 2g/day",
+        "Avoid deep-fried Indian snacks",
+      ],
+      symptom_input: "Mild lethargy reported post-discharge.",
+      reading_ids: ["p1-bp-10", "p1-glu-10"],
+      model_version: "carebridge-ollama-llama3.2-v1",
+      reviewed_by_doctor: "d1",
+      doctor_notes: "Confirmed baseline telemetry. Prescription initiated.",
+      reviewed_at: new Date(now - 10 * dayMs + 3600000).toISOString(),
+    },
+  ];
+
+  const prescriptions: Prescription[] = [
+    {
+      id: "rx-p1-1",
+      patient_id: "p1",
+      doctor_id: "d1",
+      doctor_name: "Dr. Meera Rao",
+      diagnosis_report_id: "diag-p1-1",
+      issued_at: new Date(now - 10 * dayMs).toISOString(),
+      follow_up_date: new Date(now + 14 * dayMs).toISOString().split("T")[0],
+      status: "active",
+      doctor_summary: "Routine management for Type 2 Diabetes and Hypertension with lifestyle optimization.",
+      medicines: [
+        {
+          id: "rxm-1",
+          prescription_id: "rx-p1-1",
+          medicine_id: "m1",
+          medicine_name: "Metformin",
+          dosage: "500mg",
+          frequency: "twice daily",
+          times: ["08:00", "20:00"],
+          duration: "30 days",
+          with_food: true,
+          instructions: "Take with breakfast and dinner",
+        },
+        {
+          id: "rxm-2",
+          prescription_id: "rx-p1-1",
+          medicine_id: "m2",
+          medicine_name: "Amlodipine",
+          dosage: "5mg",
+          frequency: "once morning",
+          times: ["08:00"],
+          duration: "30 days",
+          with_food: false,
+          instructions: "Take morning with water",
+        },
+      ],
+      lifestyle_targets: [
+        {
+          id: "lt-1",
+          prescription_id: "rx-p1-1",
+          patient_id: "p1",
+          category: "steps",
+          description: "Walk at brisk pace in morning",
+          target_value: 4500,
+          unit: "steps/day",
+        },
+        {
+          id: "lt-2",
+          prescription_id: "rx-p1-1",
+          patient_id: "p1",
+          category: "calories",
+          description: "Active calorie burn daily",
+          target_value: 350,
+          unit: "kcal",
+        },
+        {
+          id: "lt-3",
+          prescription_id: "rx-p1-1",
+          patient_id: "p1",
+          category: "diet",
+          description: "Low-oil, low-glycemic Indian home cooked diet",
+          target_value: null,
+          unit: null,
+        },
+      ],
+      watch_sync_payload: {
+        synced_at: new Date(now - 2 * 60 * 60 * 1000).toISOString(),
+        next_dose_summary: "Metformin 500mg @ 20:00",
+        daily_step_target: 4500,
+        daily_calorie_target: 350,
+        active_alert_level: "watch",
+        diet_rule_short: "Low-oil, low-GI diet",
+      },
+    },
+  ];
+
+  const aiQaLogs: CareBridgeState["aiQaLogs"] = [];
+  const whatsappLogs: WhatsAppNotificationLog[] = [];
 
   const doctorNotes: DoctorNote[] = [
     {
@@ -435,6 +629,12 @@ function createInitialState(): CareBridgeState {
     missedDoseEscalations,
     doctorNotes,
     patientGoals,
+    wearableDevices,
+    symptomLogs,
+    diagnosisReports,
+    prescriptions,
+    aiQaLogs,
+    whatsappLogs,
   };
 
   // Compute baseline risk scores for all 3 patients
@@ -589,6 +789,9 @@ class CareBridgeStore {
     const medicines = this.state.medicines.filter((m) => m.patient_id === patientId);
     const risk = this.state.riskScores[patientId] || { score: 10, band: "green", reasons: [] };
     const alerts = this.state.alerts.filter((a) => a.patient_id === patientId);
+    const diagnosisReports = this.getDiagnosisReports(patientId);
+    const prescriptions = this.getPrescriptions(patientId);
+    const wearableDevices = this.state.wearableDevices.filter((d) => d.patient_id === patientId);
 
     return {
       profile: patient,
@@ -602,6 +805,9 @@ class CareBridgeStore {
       },
       alerts,
       consents: patientConsents,
+      diagnosisReports,
+      prescriptions,
+      wearableDevices,
     };
   }
 
@@ -644,7 +850,7 @@ class CareBridgeStore {
     return { log: newLog, risk };
   }
 
-  public logVital(patientId: string, type: "bp" | "steps" | "glucose" | "hr", valueA: number, valueB: number | null = null, recordedAt?: string): { vital: Vital; risk: any } {
+  public logVital(patientId: string, type: Vital["type"], valueA: number, valueB: number | null = null, recordedAt?: string): { vital: Vital; risk: any } {
     const newVital: Vital = {
       id: `vital-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`,
       patient_id: patientId,
@@ -700,6 +906,18 @@ class CareBridgeStore {
       .filter((v) => v.type === "bp")
       .slice(0, 1)[0];
 
+    const latestSpo2 = patientVitals
+      .filter((v) => v.type === "spo2")
+      .slice(0, 1)[0]?.value_a ?? null;
+
+    const latestHr = patientVitals
+      .filter((v) => v.type === "hr")
+      .slice(0, 1)[0]?.value_a ?? null;
+
+    const latestCal = patientVitals
+      .filter((v) => v.type === "calories")
+      .slice(0, 1)[0]?.value_a ?? 320;
+
     const patientLogs = this.state.medLogs.filter((m) => m.patient_id === patientId);
     const takenToday = patientLogs.filter((m) => m.status === "taken").length;
     const totalToday = Math.max(takenToday, 2);
@@ -738,6 +956,17 @@ class CareBridgeStore {
       });
     }
 
+    const latestDiagnosis = this.getDiagnosisReports(patientId)[0] || null;
+    const activePrescriptions = this.getPrescriptions(patientId).filter((p) => p.status === "active");
+
+    const activeRx = activePrescriptions[0];
+    const stepsTarget = activeRx?.lifestyle_targets?.find((t) => t.category === "steps")?.target_value ?? 4500;
+    const calTarget = activeRx?.lifestyle_targets?.find((t) => t.category === "calories")?.target_value ?? 350;
+
+    const pGoals = this.state.patientGoals.filter((g) => g.patient_id === patientId);
+    const goalsCompleted = pGoals.filter((g) => g.completed_at).length;
+    const goalsTotal = pGoals.length || 2;
+
     return {
       patient: {
         id: patient.id,
@@ -757,6 +986,23 @@ class CareBridgeStore {
         latestSteps: Number(todaySteps),
       },
       alerts,
+      latestDiagnosis,
+      activePrescriptions,
+      lifestyleProgress: {
+        stepsCurrent: Number(todaySteps),
+        stepsTarget: Number(stepsTarget),
+        caloriesCurrent: Number(latestCal),
+        caloriesTarget: Number(calTarget),
+        goalsCompleted,
+        goalsTotal,
+      },
+      wearableSummary: {
+        spo2: latestSpo2,
+        hr: latestHr,
+        bp: latestBp ? `${latestBp.value_a}/${latestBp.value_b}` : null,
+        steps: Number(todaySteps),
+        calories: Number(latestCal),
+      },
     };
   }
 
@@ -800,6 +1046,32 @@ class CareBridgeStore {
       this.logVital(patientId, "hr", 114, null, t3am.toISOString());
       this.logVital(patientId, "hr", 112, null, t4am.toISOString());
       alertMessage = `Simulation: Nocturnal HR spike (109-114 bpm) injected for ${patient.name}`;
+    } else if (kind === "spo2_drop") {
+      const spo2 = params?.spo2 || 88;
+      this.logVital(patientId, "spo2", spo2, null);
+      alertMessage = `Simulation: Critical SpO2 drop (${spo2}%) injected for ${patient.name}`;
+
+      const critAlert: Alert = {
+        id: `alt-spo2-${Date.now()}`,
+        patient_id: patientId,
+        level: "doctor",
+        audience: "doctor",
+        message: `CRITICAL TELEMETRY: ${patient.name}'s blood oxygen dropped to ${spo2}%. Immediate review advised.`,
+        created_at: new Date().toISOString(),
+        acknowledged_at: null,
+      };
+      this.state.alerts.unshift(critAlert);
+
+      const famAlert: Alert = {
+        id: `alt-spo2-fam-${Date.now()}`,
+        patient_id: patientId,
+        level: "wearable_anomaly",
+        audience: "family",
+        message: `Notice: ${patient.name}'s blood oxygen reading dropped to ${spo2}%. Clinical team has been alerted.`,
+        created_at: new Date().toISOString(),
+        acknowledged_at: null,
+      };
+      this.state.alerts.unshift(famAlert);
     }
 
     const newRisk = this.recomputePatientRisk(patientId);
@@ -1055,16 +1327,355 @@ class CareBridgeStore {
   public addBrief(brief: Brief & { citations?: any[] }) {
     this.state.briefs.unshift(brief);
   }
+
+  // ---------------------------------------------------------------------------
+  // Wearables, Telemetry Ingestion, Diagnostics & Digital Prescriptions
+  // ---------------------------------------------------------------------------
+
+  public ingestVitalsBatch(
+    patientId: string,
+    readings: Vital[],
+    deviceId?: string | null
+  ): { inserted: number; skipped: number; vitalsInserted: Vital[] } {
+    const patient = this.state.patients.find((p) => p.id === patientId);
+    if (!patient) throw new Error("Patient not found");
+
+    const vitalsInserted: Vital[] = [];
+    let skipped = 0;
+
+    for (const r of readings) {
+      const recordedAt = r.recorded_at || (r as any).recordedAt || new Date().toISOString();
+      const recordedTime = new Date(recordedAt).getTime();
+
+      // Deduplicate: same patient, same type, within 60s
+      const isDuplicate = this.state.vitals.some((existing) => {
+        if (existing.patient_id !== patientId && (existing as any).patientId !== patientId) return false;
+        if (existing.type !== r.type) return false;
+        const exTime = new Date(existing.recorded_at || (existing as any).recordedAt || "").getTime();
+        return Math.abs(exTime - recordedTime) < 60000;
+      });
+
+      if (isDuplicate) {
+        skipped++;
+        continue;
+      }
+
+      const newVital: Vital = {
+        id: r.id || `vital-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        patient_id: patientId,
+        type: r.type,
+        value_a: r.value_a !== undefined ? r.value_a : (r as any).valueA,
+        value_b: r.value_b !== undefined ? r.value_b : (r as any).valueB,
+        recorded_at: recordedAt,
+        source: r.source || "wearable",
+        device_id: deviceId || r.device_id || (r as any).deviceId || null,
+      };
+
+      this.state.vitals.unshift(newVital);
+      vitalsInserted.push(newVital);
+    }
+
+    if (vitalsInserted.length > 0) {
+      this.recomputePatientRisk(patientId);
+    }
+
+    return {
+      inserted: vitalsInserted.length,
+      skipped,
+      vitalsInserted,
+    };
+  }
+
+  public addDiagnosisReport(report: DiagnosisReport): DiagnosisReport {
+    const existingIdx = this.state.diagnosisReports.findIndex((r) => r.id === report.id);
+    if (existingIdx >= 0) {
+      this.state.diagnosisReports[existingIdx] = report;
+    } else {
+      this.state.diagnosisReports.unshift(report);
+    }
+    return report;
+  }
+
+  public getDiagnosisReports(patientId: string): DiagnosisReport[] {
+    return (this.state.diagnosisReports || [])
+      .filter((r) => r.patient_id === patientId || (r as any).patientId === patientId)
+      .sort((a, b) => new Date(b.generated_at).getTime() - new Date(a.generated_at).getTime());
+  }
+
+  public updateDiagnosisReport(patientId: string, reportId: string, patch: Partial<DiagnosisReport>): DiagnosisReport | null {
+    const report = (this.state.diagnosisReports || []).find(
+      (r) => r.id === reportId && (r.patient_id === patientId || (r as any).patientId === patientId)
+    );
+    if (!report) return null;
+    Object.assign(report, patch);
+    return report;
+  }
+
+  public createPrescription(input: {
+    patientId: string;
+    doctorId?: string;
+    doctorName?: string;
+    doctorSummary: string;
+    medicines: Omit<PrescribedMedicine, "id" | "prescription_id">[];
+    lifestyleTargets: Omit<LifestyleTarget, "id" | "prescription_id" | "patient_id">[];
+    followUpDate?: string | null;
+    diagnosisReportId?: string | null;
+  }): {
+    prescription: Prescription;
+    generatedGoalsCount: number;
+    watchSyncPayload: WatchSyncPayload;
+    whatsappStatus: "sent" | "simulated_sent" | "failed";
+  } {
+    const patient = this.state.patients.find((p) => p.id === input.patientId);
+    if (!patient) throw new Error("Patient not found");
+
+    const rxId = `rx-${Date.now()}`;
+    const now = new Date();
+    const issuedAt = now.toISOString();
+
+    const prescribedMedicines: PrescribedMedicine[] = input.medicines.map((m, idx) => ({
+      id: `rxm-${Date.now()}-${idx + 1}`,
+      prescription_id: rxId,
+      medicine_id: m.medicine_id || `m-rx-${Date.now()}-${idx + 1}`,
+      medicine_name: m.medicine_name,
+      dosage: m.dosage,
+      frequency: m.frequency,
+      times: m.times || ["08:00"],
+      duration: m.duration || "30 days",
+      with_food: Boolean(m.with_food),
+      instructions: m.instructions || null,
+    }));
+
+    const lifestyleTargets: LifestyleTarget[] = input.lifestyleTargets.map((lt, idx) => ({
+      id: `lt-${Date.now()}-${idx + 1}`,
+      prescription_id: rxId,
+      patient_id: input.patientId,
+      category: lt.category,
+      description: lt.description,
+      target_value: lt.target_value ?? null,
+      unit: lt.unit || null,
+    }));
+
+    const stepTarget = lifestyleTargets.find((t) => t.category === "steps")?.target_value || 4500;
+    const calTarget = lifestyleTargets.find((t) => t.category === "calories")?.target_value || 350;
+    const dietTarget = lifestyleTargets.find((t) => t.category === "diet")?.description || "Low-oil, balanced diet";
+    const firstMed = prescribedMedicines[0];
+    const nextDose = firstMed ? `${firstMed.medicine_name} ${firstMed.dosage} @ ${firstMed.times[0] || "08:00"}` : "None scheduled";
+
+    const watchSyncPayload: WatchSyncPayload = {
+      synced_at: issuedAt,
+      next_dose_summary: nextDose,
+      daily_step_target: Number(stepTarget),
+      daily_calorie_target: Number(calTarget),
+      active_alert_level: "normal",
+      diet_rule_short: dietTarget.length > 30 ? dietTarget.slice(0, 27) + "..." : dietTarget,
+    };
+
+    const prescription: Prescription = {
+      id: rxId,
+      patient_id: input.patientId,
+      doctor_id: input.doctorId || "d1",
+      doctor_name: input.doctorName || "Dr. Meera Rao",
+      diagnosis_report_id: input.diagnosisReportId || null,
+      issued_at: issuedAt,
+      follow_up_date: input.followUpDate || null,
+      status: "active",
+      doctor_summary: input.doctorSummary,
+      medicines: prescribedMedicines,
+      lifestyle_targets: lifestyleTargets,
+      watch_sync_payload: watchSyncPayload,
+    };
+
+    this.state.prescriptions.unshift(prescription);
+
+    // Sync active medicines into state.medicines
+    for (const pm of prescribedMedicines) {
+      const existingMedIdx = this.state.medicines.findIndex(
+        (m) => m.patient_id === input.patientId && m.name.toLowerCase() === pm.medicine_name.toLowerCase()
+      );
+      if (existingMedIdx >= 0) {
+        this.state.medicines[existingMedIdx] = {
+          id: this.state.medicines[existingMedIdx].id,
+          patient_id: input.patientId,
+          name: pm.medicine_name,
+          dose: pm.dosage,
+          times: pm.times,
+          instructions: pm.instructions || undefined,
+        };
+      } else {
+        this.state.medicines.push({
+          id: pm.medicine_id || `m-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`,
+          patient_id: input.patientId,
+          name: pm.medicine_name,
+          dose: pm.dosage,
+          times: pm.times,
+          instructions: pm.instructions || undefined,
+        });
+      }
+    }
+
+    // Generate today's pending med_logs if missing
+    for (const pm of prescribedMedicines) {
+      const hasLogToday = this.state.medLogs.some(
+        (ml) =>
+          ml.patient_id === input.patientId &&
+          ml.medicine_name?.toLowerCase() === pm.medicine_name.toLowerCase() &&
+          new Date(ml.scheduled_at || "").toDateString() === now.toDateString()
+      );
+      if (!hasLogToday) {
+        this.state.medLogs.unshift({
+          id: `log-rx-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`,
+          patient_id: input.patientId,
+          medicine_id: pm.medicine_id || `m-${pm.medicine_name}`,
+          medicine_name: pm.medicine_name,
+          dose: pm.dosage,
+          scheduled_at: now.toISOString(),
+          taken_at: null,
+          status: "pending",
+        });
+      }
+    }
+
+    // Convert lifestyleTargets into interactive patientGoals
+    let generatedGoalsCount = 0;
+    for (const lt of lifestyleTargets) {
+      const mappedCategory = (["steps", "bp", "glucose"].includes(lt.category)
+        ? lt.category
+        : "other") as "steps" | "bp" | "glucose" | "other";
+
+      this.state.patientGoals.unshift({
+        id: `pg-${Date.now()}-${++generatedGoalsCount}`,
+        patient_id: input.patientId,
+        category: mappedCategory,
+        target: lt.description + (lt.target_value ? ` (${lt.target_value} ${lt.unit || ""})` : ""),
+        by_date: input.followUpDate || "Ongoing",
+        source_note_id: rxId,
+        completed_at: null,
+        created_at: issuedAt,
+      });
+    }
+
+    // Alerts for both patient and family
+    this.state.alerts.unshift({
+      id: `alt-rx-fam-${Date.now()}`,
+      patient_id: input.patientId,
+      level: "doctor_note",
+      audience: "family",
+      message: `Dr. ${prescription.doctor_name} has issued a new prescription & care plan.`,
+      created_at: issuedAt,
+      acknowledged_at: null,
+    });
+
+    this.state.alerts.unshift({
+      id: `alt-rx-pat-${Date.now()}`,
+      patient_id: input.patientId,
+      level: "doctor_note",
+      audience: "patient",
+      message: `Your prescription has been updated by Dr. ${prescription.doctor_name}.`,
+      created_at: issuedAt,
+      acknowledged_at: null,
+    });
+
+    // Log WhatsApp notification
+    const whatsappLog: WhatsAppNotificationLog = {
+      id: `wa-rx-${Date.now()}`,
+      patient_id: input.patientId,
+      recipient_phone: patient.whatsapp_number || "+91 98450 12345",
+      recipient_role: "patient",
+      event_type: "prescription_issued",
+      message: `CareBridge: New prescription issued by ${prescription.doctor_name}. Follow up by ${prescription.follow_up_date || "2 weeks"}.`,
+      status: "simulated_sent",
+      created_at: issuedAt,
+    };
+    this.state.whatsappLogs.unshift(whatsappLog);
+
+    return {
+      prescription,
+      generatedGoalsCount,
+      watchSyncPayload,
+      whatsappStatus: "simulated_sent",
+    };
+  }
+
+  public getPrescriptions(patientId: string): Prescription[] {
+    return (this.state.prescriptions || [])
+      .filter((rx) => rx.patient_id === patientId || (rx as any).patientId === patientId)
+      .sort((a, b) => new Date(b.issued_at).getTime() - new Date(a.issued_at).getTime());
+  }
+
+  public updatePrescription(patientId: string, rxId: string, patch: Partial<Prescription>): Prescription | null {
+    const rx = (this.state.prescriptions || []).find(
+      (r) => r.id === rxId && (r.patient_id === patientId || (r as any).patientId === patientId)
+    );
+    if (!rx) return null;
+    Object.assign(rx, patch);
+    return rx;
+  }
+
+  public addSymptomLog(log: SymptomLog): SymptomLog {
+    this.state.symptomLogs.unshift(log);
+    return log;
+  }
+
+  public getSymptomLogs(patientId: string): SymptomLog[] {
+    return (this.state.symptomLogs || [])
+      .filter((s) => s.patient_id === patientId || (s as any).patientId === patientId)
+      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+  }
+
+  public addAiQaLog(entry: { id?: string; patient_id: string; question: string; answer: string; model_used: string; created_at?: string }) {
+    const record = {
+      id: entry.id || `qa-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      patient_id: entry.patient_id,
+      question: entry.question,
+      answer: entry.answer,
+      model_used: entry.model_used,
+      created_at: entry.created_at || new Date().toISOString(),
+    };
+    this.state.aiQaLogs.unshift(record);
+    return record;
+  }
+
+  public getAiQaLogs(patientId?: string) {
+    if (!patientId) return this.state.aiQaLogs;
+    return this.state.aiQaLogs.filter((q) => q.patient_id === patientId);
+  }
+
+  public addWhatsAppLog(entry: WhatsAppNotificationLog): WhatsAppNotificationLog {
+    this.state.whatsappLogs.unshift(entry);
+    return entry;
+  }
+
+  public getWhatsAppLogs(patientId?: string): WhatsAppNotificationLog[] {
+    if (!patientId) return this.state.whatsappLogs;
+    return this.state.whatsappLogs.filter((w) => w.patient_id === patientId);
+  }
+
+  public saveWearableDevice(device: WearableDevice): WearableDevice {
+    const idx = this.state.wearableDevices.findIndex((d) => d.id === device.id || d.patient_id === device.patient_id);
+    if (idx >= 0) {
+      this.state.wearableDevices[idx] = { ...this.state.wearableDevices[idx], ...device };
+      return this.state.wearableDevices[idx];
+    } else {
+      this.state.wearableDevices.unshift(device);
+      return device;
+    }
+  }
+
+  public getWearableDevices(patientId: string): WearableDevice[] {
+    return (this.state.wearableDevices || []).filter((d) => d.patient_id === patientId);
+  }
 }
 
 // Global variable so state persists across hot module reloads in Next.js development
 const globalForStore = globalThis as unknown as { careBridgeStore?: CareBridgeStore; careBridgeStoreVersion?: number };
-const STORE_VERSION = 4;
+const STORE_VERSION = 5;
 
 if (
   !globalForStore.careBridgeStore ||
   globalForStore.careBridgeStoreVersion !== STORE_VERSION ||
-  typeof (globalForStore.careBridgeStore as any).getPatientGoals !== "function"
+  typeof (globalForStore.careBridgeStore as any).getPatientGoals !== "function" ||
+  typeof (globalForStore.careBridgeStore as any).getPrescriptions !== "function"
 ) {
   globalForStore.careBridgeStore = new CareBridgeStore();
   globalForStore.careBridgeStoreVersion = STORE_VERSION;

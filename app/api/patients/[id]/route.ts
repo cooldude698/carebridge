@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { store } from "@/lib/supabase/localStore";
-import { MOCK_PATIENT_DETAILS, SEED_MEDICINES } from "@/lib/mockData";
-import { buildWearableContext } from "@/lib/wearable";
+import {
+  getPatientDetailDb,
+  getPrescriptionsDb,
+  getDiagnosisReportsDb,
+  getSymptomLogsDb,
+} from "@/lib/supabase/db";
+import { buildWearableContext } from "@/lib/wearable/processor";
 import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
@@ -10,41 +14,47 @@ export async function GET(
   request: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
-  const params = await context.params;
-  const rawId = params.id;
-  const patientId = rawId === "patient-ramesh" ? "p1" : rawId;
-  const url = new URL(request.url);
-  const actor = url.searchParams.get("actor") === "patient" ? "patient" : "doctor";
-
-  let detail = null;
   try {
-    detail = store.getPatientDetail(patientId, actor);
-  } catch {
-    // continue to fallback
-  }
+    const params = await context.params;
+    const rawId = params.id;
+    const patientId = rawId === "patient-ramesh" ? "p1" : rawId;
+    const url = new URL(request.url);
+    const actor = url.searchParams.get("actor") === "patient" ? "patient" : "doctor";
 
-  if (!detail) {
-    const fallback = MOCK_PATIENT_DETAILS[patientId] || MOCK_PATIENT_DETAILS.p1;
-    if (!fallback) {
+    const detail = await getPatientDetailDb(patientId, actor);
+    if (!detail) {
       return NextResponse.json({ error: "Patient not found" }, { status: 404 });
     }
-    detail = {
-      ...fallback,
-      medicines: SEED_MEDICINES,
-    };
+
+    let supabase: any = null;
+    try {
+      supabase = createClient();
+    } catch {
+      // offline or local
+    }
+
+    const [wearable, prescriptions, diagnosisReports, recentSymptoms] = await Promise.all([
+      buildWearableContext(patientId, supabase).catch(() => null),
+      getPrescriptionsDb(patientId).catch(() => []),
+      getDiagnosisReportsDb(patientId).catch(() => []),
+      getSymptomLogsDb(patientId).catch(() => []),
+    ]);
+
+    const activePrescriptions = prescriptions.filter((rx) => rx.status === "active");
+    const latestDiagnosis = diagnosisReports[0] || null;
+
+    return NextResponse.json({
+      ...detail,
+      wearable,
+      prescriptions,
+      activePrescriptions,
+      latestDiagnosis,
+      recentSymptoms,
+    });
+  } catch (err: any) {
+    return NextResponse.json(
+      { error: err?.message || "Failed to fetch patient details" },
+      { status: 500 }
+    );
   }
-
-  let supabase: any = null;
-  try {
-    supabase = await createClient();
-  } catch {
-    // offline or local
-  }
-
-  const wearable = await buildWearableContext(patientId, supabase).catch(() => null);
-
-  return NextResponse.json({
-    ...detail,
-    wearable,
-  });
 }

@@ -72,7 +72,56 @@ export async function GET(
           return;
         }
 
-        if (geminiApiKey) {
+        let streamStarted = false;
+
+        // 1. Try local Ollama first
+        const effectiveOllamaUrl = ollamaBaseUrl || "http://localhost:11434";
+        try {
+          const res = await fetch(`${effectiveOllamaUrl}/api/chat`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              model: process.env.OLLAMA_MODEL || "llama3.2",
+              messages: [
+                { role: "system", content: BRIEF_SYSTEM_PROMPT },
+                { role: "user", content: `Context:\n${JSON.stringify(briefContext)}` },
+              ],
+              stream: true,
+            }),
+          });
+
+          if (res.ok && res.body) {
+            streamStarted = true;
+            const reader = res.body.getReader();
+            const decoder = new TextDecoder();
+            let buffer = "";
+
+            while (true) {
+              const { done, value } = await reader.read();
+              if (done) break;
+              buffer += decoder.decode(value, { stream: true });
+              const lines = buffer.split("\n");
+              buffer = lines.pop() || "";
+
+              for (const line of lines) {
+                if (!line.trim()) continue;
+                try {
+                  const parsed = JSON.parse(line);
+                  const token = parsed?.message?.content;
+                  if (token) {
+                    tokensReceived = true;
+                    accumulatedText += token;
+                    sendEvent({ type: "token", delta: token });
+                  }
+                } catch {}
+              }
+            }
+          }
+        } catch {
+          // Ollama not reachable, fall through
+        }
+
+        if (!streamStarted && geminiApiKey) {
           const res = await fetch(
             `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:streamGenerateContent?key=${geminiApiKey}&alt=sse`,
             {

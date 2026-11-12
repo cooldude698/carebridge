@@ -152,8 +152,59 @@ export async function buildWearableContext(
     ? Math.round(gluVitals.reduce((sum, v) => sum + (v.value_a ?? v.valueA ?? 0), 0) / gluVitals.length)
     : null;
 
-  // 5. Anomaly Rules (Deterministic — no LLM)
+  // 5. SpO2 (type === 'spo2')
+  const spo2Vitals = vitals14d.filter((v) => v.type === "spo2");
+  const spo2Readings = spo2Vitals.map((v) => ({
+    id: v.id,
+    at: v.recorded_at || v.recordedAt || new Date().toISOString(),
+    pct: v.value_a ?? v.valueA ?? 98,
+  }));
+  const latestSpo2 = spo2Readings[0]?.pct ?? null;
+
+  const oneDayMs = 24 * 60 * 60 * 1000;
+  const spo2Last24h = spo2Vitals.filter((v) => {
+    const diff = now - new Date(v.recorded_at || v.recordedAt || 0).getTime();
+    return diff <= oneDayMs;
+  });
+  const min24hSpo2 = spo2Last24h.length > 0
+    ? Math.min(...spo2Last24h.map((v) => v.value_a ?? v.valueA ?? 100))
+    : latestSpo2;
+
+  // 6. Calories (type === 'calories')
+  const calVitals = vitals14d.filter((v) => v.type === "calories");
+  const latestCal = calVitals[0] ? (calVitals[0].value_a ?? calVitals[0].valueA ?? 320) : 320;
+  const dailyMeanCal = calVitals.length > 0
+    ? Math.round(calVitals.reduce((sum, v) => sum + (v.value_a ?? v.valueA ?? 0), 0) / calVitals.length)
+    : latestCal;
+
+  // 7. Sleep (type === 'sleep')
+  const sleepVitals = vitals14d.filter((v) => v.type === "sleep");
+  const lastNightHours = sleepVitals[0] ? (sleepVitals[0].value_a ?? sleepVitals[0].valueA ?? null) : null;
+  const avg7dSleep = sleepVitals.length > 0
+    ? parseFloat((sleepVitals.slice(0, 7).reduce((sum, v) => sum + (v.value_a ?? v.valueA ?? 0), 0) / Math.min(sleepVitals.length, 7)).toFixed(1))
+    : null;
+
+  // 8. Deterministic Anomaly Rules (Strict reading IDs from dataset)
   const anomalyFlags: AnomalyFlag[] = [];
+
+  // Rule SPO2_CRITICAL (CRITICAL)
+  if (latestSpo2 !== null && latestSpo2 < 90 && spo2Vitals[0]) {
+    anomalyFlags.push({
+      ruleId: "SPO2_CRITICAL",
+      severity: "CRITICAL",
+      title: "Critically low blood oxygen",
+      detail: `SpO2 dropped to ${latestSpo2}% (normal 95–100%). Immediate clinical review advised.`,
+      readingId: spo2Vitals[0].id,
+    });
+  } else if (latestSpo2 !== null && latestSpo2 >= 90 && latestSpo2 < 94 && spo2Vitals[0]) {
+    anomalyFlags.push({
+      ruleId: "SPO2_LOW",
+      severity: "HIGH",
+      title: "Low blood oxygen saturation",
+      detail: `SpO2 reading of ${latestSpo2}% below normal range (95–100%).`,
+      readingId: spo2Vitals[0].id,
+    });
+  }
 
   // Rule HR_NOCTURNAL_HIGH (HIGH)
   if (nocturnalMean > 100 && nocturnalHrReadings.length > 0) {
@@ -230,6 +281,19 @@ export async function buildWearableContext(
     glucose: {
       latestFasting,
       mean: gluMean,
+    },
+    spo2: {
+      latest: latestSpo2,
+      min24h: min24hSpo2,
+      readings: spo2Readings,
+    },
+    calories: {
+      dailyMean: dailyMeanCal,
+      latest: latestCal,
+    },
+    sleep: {
+      lastNightHours,
+      avg7dHours: avg7dSleep,
     },
     anomalyFlags,
     lastUpdated: new Date().toISOString(),

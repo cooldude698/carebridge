@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { logMedicineDb, getPatientDetailDb } from "@/lib/supabase/db";
 import { store } from "@/lib/supabase/localStore";
 
 export const dynamic = "force-dynamic";
@@ -21,31 +22,43 @@ export async function POST(
       );
     }
 
-    try {
-      const result = store.logMedicine(patientId, medicineId, status);
-      return NextResponse.json({
-        success: true,
-        log: result.log,
-        risk: result.risk,
-      });
-    } catch {
-      // Fallback response for unseeded patient ids
-      const logEntry = {
-        id: `log-${Date.now()}`,
-        patientId: rawId,
-        medicineId,
-        scheduledAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        takenAt: status === 'taken' ? new Date().toISOString() : null,
-        status,
-      };
-      return NextResponse.json({
-        success: true,
-        log: logEntry,
-      });
+    const result = await logMedicineDb(patientId, medicineId, status);
+
+    // If marked taken, clear any pending missed dose escalation for this patient
+    if (status === "taken") {
+      const escalations = store.getState().missedDoseEscalations;
+      for (const [key, esc] of Object.entries(escalations)) {
+        if (esc.patientId === patientId) {
+          delete escalations[key];
+        }
+      }
     }
+
+    // Compute compliance percentage over past 7 days and today
+    const now = Date.now();
+    const sevenDaysMs = 7 * 24 * 60 * 60 * 1000;
+    const medLogs = store.getState().medLogs.filter(
+      (m) => m.patient_id === patientId || (m as any).patientId === patientId
+    );
+
+    const logs7d = medLogs.filter((m) => {
+      const time = new Date(m.scheduled_at || (m as any).scheduledAt || 0).getTime();
+      return now - time <= sevenDaysMs;
+    });
+
+    const taken7d = logs7d.filter((m) => m.status === "taken").length;
+    const total7d = logs7d.length;
+    const compliancePct = total7d > 0 ? Math.round((taken7d / total7d) * 100) : 100;
+
+    return NextResponse.json({
+      success: true,
+      log: result.log,
+      risk: result.risk,
+      compliancePct,
+    });
   } catch (err: any) {
     return NextResponse.json(
-      { error: err.message || "Failed to log medication" },
+      { error: err?.message || "Failed to log medication" },
       { status: 500 }
     );
   }

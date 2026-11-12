@@ -4,14 +4,25 @@ import { SimEventRequest } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
+const VALID_SIM_KINDS = [
+  "miss_dose",
+  "bp_spike",
+  "steps_drop",
+  "recover",
+  "hr_spike",
+  "spo2_drop",
+] as const;
+
 export async function POST(request: NextRequest) {
   try {
     const body = (await request.json()) as SimEventRequest;
     const { patientId, kind, params } = body;
 
-    if (!patientId || !kind || !["miss_dose", "bp_spike", "steps_drop", "recover", "hr_spike"].includes(kind)) {
+    if (!patientId || !kind || !VALID_SIM_KINDS.includes(kind as any)) {
       return NextResponse.json(
-        { error: "patientId and valid kind ('miss_dose' | 'bp_spike' | 'steps_drop' | 'recover' | 'hr_spike') are required." },
+        {
+          error: `patientId and valid kind (${VALID_SIM_KINDS.join(", ")}) are required.`,
+        },
         { status: 400 }
       );
     }
@@ -20,7 +31,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(result);
   } catch (err: any) {
     return NextResponse.json(
-      { error: err.message || "Failed to process simulation event" },
+      { error: err?.message || "Failed to process simulation event" },
       { status: 500 }
     );
   }

@@ -2,7 +2,6 @@
 
 import React from 'react';
 import { Stethoscope, CalendarCheck, Clock, Sparkles } from 'lucide-react';
-import { Card } from './Card';
 import { GoalItem } from './GoalItem';
 import { Locale, t } from '@/lib/i18n';
 
@@ -43,25 +42,25 @@ export const DoctorNoteCard: React.FC<DoctorNoteCardProps> = ({
 }) => {
   return (
     <div
-      className={`bg-white rounded-[20px] border-2 border-ink-900 shadow-[3px_3px_0px_#121214] border-l-[6px] border-l-[#0D9488] p-4 sm:p-5 space-y-4 ${className}`}
+      className={`bg-white rounded-xl border border-[#E2E8F0] border-l-4 border-l-[#0D9488] shadow-card p-4 sm:p-5 space-y-4 ${className}`}
     >
       {/* Header */}
-      <div className="flex items-center justify-between pb-3 border-b-2 border-ink-100">
+      <div className="flex items-center justify-between pb-3 border-b border-[#E2E8F0]">
         <div className="flex items-center gap-2.5">
-          <div className="p-2 rounded-xl bg-teal-50 text-teal-700 border border-teal-200 shrink-0">
-            <Stethoscope className="w-5 h-5" />
+          <div className="p-2 rounded-lg bg-[#F0FDFA] text-[#0D9488] border border-[#CCFBF1] shrink-0">
+            <Stethoscope className="w-4.5 h-4.5" />
           </div>
           <div>
             <div className="flex items-center gap-2 flex-wrap">
-              <h3 className="font-display font-bold text-base sm:text-lg text-ink-900 leading-tight">
+              <h3 className="font-display font-semibold text-base text-[#0F172A] leading-tight">
                 {t('doctor_note.from_doctor', locale)}
               </h3>
-              <span className="inline-flex items-center gap-1 text-[11px] font-body font-bold bg-[#E6F9F7] text-teal-800 px-2 py-0.5 rounded-full border border-teal-300">
-                <Sparkles className="w-3 h-3 text-teal-600" />
+              <span className="inline-flex items-center gap-1 text-[11px] font-body font-medium bg-[#F0FDFA] text-[#0D9488] px-2 py-0.5 rounded-full border border-[#CCFBF1]">
+                <Sparkles className="w-3 h-3 text-[#0D9488]" />
                 {t('doctor_note.new_plan', locale)}
               </span>
             </div>
-            <p className="font-body text-xs text-ink-500 mt-0.5 font-medium">
+            <p className="font-body text-xs text-[#64748B] mt-0.5">
               {noteDate}
             </p>
           </div>
@@ -71,25 +70,25 @@ export const DoctorNoteCard: React.FC<DoctorNoteCardProps> = ({
       {/* Reminders section */}
       {reminders.length > 0 && (
         <div className="space-y-2">
-          <p className="font-body font-bold text-xs text-ink-500 uppercase tracking-wider">
+          <p className="font-body font-semibold text-xs text-[#64748B] uppercase tracking-wider">
             {t('doctor_note.reminders_title', locale)}
           </p>
           <div className="space-y-2">
             {reminders.map((reminder, idx) => (
               <div
                 key={idx}
-                className="flex flex-col sm:flex-row sm:items-center justify-between p-3 bg-[#FAF8F5] rounded-xl border border-ink-300 gap-1.5"
+                className="flex flex-col sm:flex-row sm:items-center justify-between p-3 bg-[#F8FAFC] rounded-lg border border-[#E2E8F0] gap-1.5"
               >
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className="font-data font-bold text-xs sm:text-sm text-ink-900">
+                  <span className="font-data font-semibold text-xs sm:text-sm text-[#0F172A]">
                     {reminder.medicine}
                   </span>
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#E6F9F7] text-teal-900 font-data text-[10px] sm:text-[11px] font-bold">
-                    <Clock className="w-3 h-3 text-teal-700" />
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#F0FDFA] text-[#0D9488] font-data text-[11px] font-medium border border-[#CCFBF1]">
+                    <Clock className="w-3 h-3 text-[#0D9488]" />
                     {reminder.time}
                   </span>
                 </div>
-                <p className="font-body text-sm sm:text-base text-ink-800 font-medium leading-snug">
+                <p className="font-body text-xs sm:text-sm text-[#334155] leading-snug">
                   {reminder.instruction}
                 </p>
               </div>
@@ -101,7 +100,7 @@ export const DoctorNoteCard: React.FC<DoctorNoteCardProps> = ({
       {/* Goals section */}
       {goals.length > 0 && (
         <div className="space-y-2">
-          <p className="font-body font-bold text-xs text-ink-500 uppercase tracking-wider">
+          <p className="font-body font-semibold text-xs text-[#64748B] uppercase tracking-wider">
             {t('doctor_note.goals_title', locale)}
           </p>
           <div className="space-y-2">
@@ -123,12 +122,12 @@ export const DoctorNoteCard: React.FC<DoctorNoteCardProps> = ({
 
       {/* Follow-up Date */}
       {followUpDate && (
-        <div className="pt-2 border-t-2 border-ink-100 flex items-center gap-2.5">
-          <div className="p-1.5 rounded-lg bg-teal-50 text-teal-700 border border-teal-200 shrink-0">
+        <div className="pt-2 border-t border-[#E2E8F0] flex items-center gap-2.5">
+          <div className="p-1.5 rounded-md bg-[#F0FDFA] text-[#0D9488] border border-[#CCFBF1] shrink-0">
             <CalendarCheck className="w-4 h-4" />
           </div>
-          <p className="font-body text-xs sm:text-sm text-ink-800 leading-snug">
-            <span className="font-bold text-ink-900">
+          <p className="font-body text-xs sm:text-sm text-[#334155]">
+            <span className="font-semibold text-[#0F172A]">
               {t('doctor_note.follow_up', locale)}:
             </span>{' '}
             {followUpDate}

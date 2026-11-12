@@ -1,20 +1,17 @@
 /**
- * CareBridge font configuration (owner: Swapin)
- * ─────────────────────────────────────────────
- * ONLY THREE FONTS ARE ALLOWED:
- *   Montserrat  → headings, hero, buttons, nav   (--font-display / --font-montserrat)
- *   DM Sans     → body text, forms, labels        (--font-body / --font-dm-sans)
- *   Sora        → numbers, stats, badges, charts  (--font-data / --font-sora)
- *
- * Banned: Inter, Arial, Roboto, Calibri, JetBrains Mono, Geist, any monospace.
- * This is the single source of truth. No other file may import fonts.
+ * CareBridge Unified Font Configuration
+ * ──────────────────────────────────────
+ * Clean Minimal Clinical SaaS Typography:
+ *   fontDisplay → Plus_Jakarta_Sans (--font-display) for headings, hero, buttons, nav
+ *   fontBody    → DM_Sans (--font-body) for body text, forms, labels, tables
+ *   fontData    → Sora (--font-data) for telemetry, timestamps, vitals, numbers (with tabular-nums)
  */
 
-import { Montserrat, DM_Sans, Sora } from "next/font/google";
+import { Plus_Jakarta_Sans, DM_Sans, Sora } from "next/font/google";
 
-export const fontDisplay = Montserrat({
+export const fontDisplay = Plus_Jakarta_Sans({
   subsets: ["latin"],
-  weight: ["600", "700", "800"],
+  weight: ["500", "600", "700", "800"],
   variable: "--font-display",
   display: "swap",
 });
@@ -33,7 +30,7 @@ export const fontData = Sora({
   display: "swap",
 });
 
-// Aliases for teammate compatibility
+// Backwards-compatible aliases so existing imports in teammate code continue working
 export const montserrat = fontDisplay;
 export const dmSans = fontBody;
 export const sora = fontData;

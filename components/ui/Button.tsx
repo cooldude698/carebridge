@@ -1,7 +1,7 @@
 /**
- * Button component (Daisy × Claud Tactile Neo-Brutalist Edition)
+ * Button component (Minimal Clinical SaaS Edition)
  * ─────────────────────────────────────────────────────────────
- * Features crisp 2px ink borders, tactile drop shadows, and responsive active press.
+ * Clean, accessible medical-grade buttons with subtle borders and soft elevation.
  */
 
 "use client";
@@ -32,46 +32,39 @@ export interface ButtonProps
 
 const variantStyles: Record<ButtonVariant, string> = {
   primary:
-    "bg-[var(--accent-lime)] text-[var(--ink-900)] border-2 border-[var(--ink-900)] " +
-    "shadow-[2px_2px_0px_var(--ink-900)] hover:shadow-[3px_3px_0px_var(--ink-900)] " +
-    "hover:-translate-y-0.5 active:translate-y-0.5 active:translate-x-0.5 active:shadow-[1px_1px_0px_var(--ink-900)] " +
+    "bg-[#0D9488] text-white hover:bg-[#0F766E] border border-transparent shadow-sm " +
+    "focus-visible:ring-2 focus-visible:ring-[#0D9488] focus-visible:ring-offset-2 " +
     "disabled:opacity-50 disabled:cursor-not-allowed",
   secondary:
-    "bg-[var(--accent-lavender)] text-[var(--ink-900)] border-2 border-[var(--ink-900)] " +
-    "shadow-[2px_2px_0px_var(--ink-900)] hover:shadow-[3px_3px_0px_var(--ink-900)] " +
-    "hover:-translate-y-0.5 active:translate-y-0.5 active:translate-x-0.5 active:shadow-[1px_1px_0px_var(--ink-900)] " +
-    "disabled:opacity-50 disabled:cursor-not-allowed",
-  ghost:
-    "bg-white/80 text-[var(--ink-900)] border-2 border-[var(--ink-900)] " +
-    "shadow-[2px_2px_0px_var(--ink-900)] hover:bg-[var(--surface-50)] hover:shadow-[3px_3px_0px_var(--ink-900)] " +
-    "hover:-translate-y-0.5 active:translate-y-0.5 active:translate-x-0.5 active:shadow-[1px_1px_0px_var(--ink-900)] " +
+    "bg-white text-[#0F172A] border border-[#E2E8F0] hover:bg-[#F8FAFC] hover:border-[#CBD5E1] shadow-xs " +
+    "focus-visible:ring-2 focus-visible:ring-[#0D9488] focus-visible:ring-offset-2 " +
     "disabled:opacity-50 disabled:cursor-not-allowed",
   outline:
-    "bg-white/80 text-[var(--ink-900)] border-2 border-[var(--ink-900)] " +
-    "shadow-[2px_2px_0px_var(--ink-900)] hover:bg-[var(--surface-50)] hover:shadow-[3px_3px_0px_var(--ink-900)] " +
-    "hover:-translate-y-0.5 active:translate-y-0.5 active:translate-x-0.5 active:shadow-[1px_1px_0px_var(--ink-900)] " +
+    "bg-white text-[#0F172A] border border-[#E2E8F0] hover:bg-[#F8FAFC] hover:border-[#CBD5E1] shadow-xs " +
+    "focus-visible:ring-2 focus-visible:ring-[#0D9488] focus-visible:ring-offset-2 " +
+    "disabled:opacity-50 disabled:cursor-not-allowed",
+  ghost:
+    "bg-transparent text-[#334155] hover:bg-[#F1F5F9] hover:text-[#0F172A] " +
+    "focus-visible:ring-2 focus-visible:ring-[#0D9488] focus-visible:ring-offset-2 " +
     "disabled:opacity-50 disabled:cursor-not-allowed",
   dark:
-    "bg-[var(--ink-900)] text-white border-2 border-[var(--ink-900)] " +
-    "shadow-[2px_2px_0px_var(--ink-900)] hover:bg-[var(--ink-800)] hover:shadow-[3px_3px_0px_var(--ink-900)] " +
-    "hover:-translate-y-0.5 active:translate-y-0.5 active:translate-x-0.5 active:shadow-[1px_1px_0px_var(--ink-900)] " +
+    "bg-[#0F172A] text-white hover:bg-[#1E293B] border border-transparent shadow-sm " +
+    "focus-visible:ring-2 focus-visible:ring-[#0D9488] focus-visible:ring-offset-2 " +
     "disabled:opacity-50 disabled:cursor-not-allowed",
   danger:
-    "bg-[var(--risk-red-bg)] text-[var(--risk-red)] border-2 border-[var(--risk-red)] " +
-    "shadow-[2px_2px_0px_var(--risk-red)] hover:bg-red-100 " +
-    "active:translate-y-0.5 active:translate-x-0.5 active:shadow-[1px_1px_0px_var(--risk-red)] " +
+    "bg-[#FEF2F2] text-[#DC2626] border border-[#FECACA] hover:bg-[#FEE2E2] " +
+    "focus-visible:ring-2 focus-visible:ring-[#DC2626] focus-visible:ring-offset-2 " +
     "disabled:opacity-50 disabled:cursor-not-allowed",
   success:
-    "bg-[var(--risk-green-bg)] text-[var(--risk-green)] border-2 border-[var(--risk-green)] " +
-    "shadow-[2px_2px_0px_var(--risk-green)] hover:bg-green-100 " +
-    "active:translate-y-0.5 active:translate-x-0.5 active:shadow-[1px_1px_0px_var(--risk-green)] " +
+    "bg-[#F0FDF4] text-[#15803D] border border-[#BBF7D0] hover:bg-[#DCFCE7] " +
+    "focus-visible:ring-2 focus-visible:ring-[#15803D] focus-visible:ring-offset-2 " +
     "disabled:opacity-50 disabled:cursor-not-allowed",
 };
 
 const sizeStyles: Record<ButtonSize, string> = {
-  sm: "min-h-[36px] px-3.5 text-xs font-display font-bold gap-1.5",
-  md: "min-h-[44px] px-5 text-sm font-display font-bold gap-2",
-  lg: "min-h-[52px] px-7 text-base font-display font-bold gap-2.5",
+  sm: "min-h-[36px] px-3.5 text-xs font-display font-medium rounded-lg gap-1.5",
+  md: "min-h-[44px] px-4.5 text-sm font-display font-medium rounded-lg gap-2",
+  lg: "min-h-[50px] px-6 text-base font-display font-medium rounded-xl gap-2.5",
 };
 
 export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
@@ -101,8 +94,7 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         aria-busy={isBusy}
         className={[
           "inline-flex items-center justify-center",
-          "rounded-[var(--r-pill)]",
-          "transition-all duration-100 ease-out",
+          "transition-all duration-150 ease-out",
           "select-none whitespace-nowrap cursor-pointer",
           variantStyles[variant],
           sizeStyles[size],

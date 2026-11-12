@@ -154,7 +154,7 @@ async function parseDoctorNoteWithLLM(noteText: string): Promise<ParsedInstructi
 
 export async function POST(
   request: NextRequest,
-  context: { params: Promise<{ id: string }> | { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
     const params = await context.params;

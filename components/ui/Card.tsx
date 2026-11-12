@@ -1,7 +1,7 @@
 /**
- * Card component (Daisy × Claud Tactile Neo-Brutalist Edition)
+ * Card component (Minimal Clinical SaaS Edition)
  * ─────────────────────────────────────────────────────────────
- * Clean white or warm surface with 2px ink border and tactile drop shadow.
+ * Clean white or calm subtle surface with 1px border and soft elevation.
  */
 
 import * as React from "react";
@@ -14,19 +14,19 @@ export interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
 }
 
 const variantStyles: Record<NonNullable<CardProps["variant"]>, string> = {
-  default:  "bg-white border-2 border-[var(--ink-900)] shadow-[4px_4px_0px_var(--ink-900)]",
-  flat:     "bg-[var(--surface-50)] border-2 border-[var(--ink-900)]",
-  bordered: "bg-white border-2 border-[var(--ink-900)] shadow-[2px_2px_0px_var(--ink-900)]",
-  lavender: "bg-[var(--accent-lavender)] border-2 border-[var(--ink-900)] shadow-[4px_4px_0px_var(--ink-900)]",
-  yellow:   "bg-[var(--accent-yellow)] border-2 border-[var(--ink-900)] shadow-[4px_4px_0px_var(--ink-900)]",
-  lime:     "bg-[var(--accent-lime)] border-2 border-[var(--ink-900)] shadow-[4px_4px_0px_var(--ink-900)]",
+  default:  "bg-white border border-[#E2E8F0] shadow-card",
+  flat:     "bg-[#F8FAFC] border border-[#E2E8F0]",
+  bordered: "bg-white border border-[#CBD5E1] shadow-card",
+  lavender: "bg-[#F8FAFC] border border-[#E2E8F0]",
+  yellow:   "bg-[#FFFBEB] border border-[#FDE68A]",
+  lime:     "bg-[#F0FDFA] border border-[#CCFBF1]",
 };
 
 const paddingStyles: Record<NonNullable<CardProps["padding"]>, string> = {
   none: "p-0",
-  sm:   "p-4",
-  md:   "p-6",
-  lg:   "p-8",
+  sm:   "p-3.5",
+  md:   "p-5",
+  lg:   "p-6",
 };
 
 export const Card = React.forwardRef<HTMLDivElement, CardProps>(
@@ -48,11 +48,11 @@ export const Card = React.forwardRef<HTMLDivElement, CardProps>(
       <div
         ref={ref}
         className={[
-          "rounded-[var(--r-xl)]",
+          "rounded-xl transition-all duration-150",
           variantStyles[variant],
           paddingStyles[padding],
           isInteractive &&
-            "cursor-pointer transition-all duration-150 hover:-translate-y-1 hover:shadow-[6px_6px_0px_var(--ink-900)] active:translate-y-0.5 active:shadow-[2px_2px_0px_var(--ink-900)]",
+            "cursor-pointer hover:border-[#CBD5E1] hover:shadow-hover active:scale-[0.99]",
           className,
         ]
           .filter(Boolean)
@@ -74,7 +74,7 @@ export const CardHeader = React.forwardRef<HTMLDivElement, CardSectionProps>(
   ({ children, className = "", ...props }, ref) => (
     <div
       ref={ref}
-      className={["border-b-2 border-[var(--ink-900)] pb-4 mb-4", className]
+      className={["border-b border-[#E2E8F0] pb-3 mb-4", className]
         .filter(Boolean)
         .join(" ")}
       {...props}
@@ -98,7 +98,7 @@ export const CardFooter = React.forwardRef<HTMLDivElement, CardSectionProps>(
   ({ children, className = "", ...props }, ref) => (
     <div
       ref={ref}
-      className={["border-t-2 border-[var(--ink-900)] pt-4 mt-4", className]
+      className={["border-t border-[#E2E8F0] pt-3 mt-4", className]
         .filter(Boolean)
         .join(" ")}
       {...props}

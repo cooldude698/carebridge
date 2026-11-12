@@ -1,13 +1,10 @@
 /**
- * CareBridge Motion Variants & Utilities (owner: Swapin)
- * ─────────────────────────────────────────────────────────
- * Standardised framer-motion animation variants per DESIGN.md §7.
- *
- * Rules:
- *  - 180–220ms ease-out for quick state changes.
- *  - List re-sorting FLIP layout transitions so rows visibly slide.
- *  - Continuous gentle mic pulse for listening states.
- *  - Respects prefers-reduced-motion via CSS & transition configurations.
+ * CareBridge Motion Variants & Utilities (Minimal Clinical Edition)
+ * ─────────────────────────────────────────────────────────────
+ * Clean, subtle clinical transitions:
+ *  - 160–220ms easeOut for quick, confident state changes.
+ *  - Respects prefers-reduced-motion.
+ *  - Zero jarring physics or bouncy cartoons.
  */
 
 import type { Variants, Transition } from "framer-motion";
@@ -19,15 +16,15 @@ const isReducedMotion = (): boolean => {
 
 /** Standard transition respecting prefers-reduced-motion */
 export const defaultTransition: Transition = {
-  duration: isReducedMotion() ? 0 : 0.2,
-  ease: [0.16, 1, 0.3, 1], // ease-out quad/cubic
+  duration: isReducedMotion() ? 0 : 0.18,
+  ease: [0.16, 1, 0.3, 1],
 };
 
-/** Risk badge swap animation: quick scale pop + color fade */
+/** Risk badge swap animation: subtle opacity & scale fade */
 export const riskBadgeSwap: Variants = {
   initial: {
-    scale: 0.9,
-    opacity: 0.7,
+    scale: 0.96,
+    opacity: 0.8,
   },
   animate: {
     scale: 1,
@@ -38,7 +35,7 @@ export const riskBadgeSwap: Variants = {
     },
   },
   exit: {
-    scale: 0.9,
+    scale: 0.96,
     opacity: 0,
     transition: {
       duration: isReducedMotion() ? 0 : 0.12,
@@ -51,10 +48,10 @@ export const badgeSwapVariants: Variants = riskBadgeSwap;
 /** Continuous gentle mic pulse for VoiceButton listening */
 export const micPulse: Variants = {
   animate: {
-    scale: [1, 1.08, 1],
+    scale: [1, 1.04, 1],
     transition: {
       repeat: Infinity,
-      duration: isReducedMotion() ? 0 : 0.9,
+      duration: isReducedMotion() ? 0 : 1.2,
       ease: "easeInOut",
     },
   },
@@ -66,7 +63,7 @@ export const micPulseVariants: Variants = micPulse;
 export const listSlide = {
   layout: true,
   transition: {
-    duration: isReducedMotion() ? 0 : 0.22,
+    duration: isReducedMotion() ? 0 : 0.2,
     ease: "easeOut",
   },
 };
@@ -75,21 +72,21 @@ export const listSlide = {
 export const listItemVariants: Variants = {
   hidden: {
     opacity: 0,
-    y: 8,
+    y: 6,
   },
   visible: {
     opacity: 1,
     y: 0,
     transition: {
-      duration: 0.22,
+      duration: 0.2,
       ease: [0.16, 1, 0.3, 1],
     },
   },
   exit: {
     opacity: 0,
-    scale: 0.96,
+    scale: 0.98,
     transition: {
-      duration: 0.15,
+      duration: 0.12,
     },
   },
 };
@@ -100,7 +97,7 @@ export const drawerVariants: Variants = {
     x: "100%",
     opacity: 0.5,
     transition: {
-      duration: 0.25,
+      duration: 0.22,
       ease: [0.32, 0.72, 0, 1],
     },
   },
@@ -108,7 +105,7 @@ export const drawerVariants: Variants = {
     x: 0,
     opacity: 1,
     transition: {
-      duration: 0.3,
+      duration: 0.24,
       ease: [0.16, 1, 0.3, 1],
     },
   },
@@ -116,12 +113,12 @@ export const drawerVariants: Variants = {
 
 /** Fade in with slight scale pop */
 export const fadeInVariants: Variants = {
-  hidden: { opacity: 0, scale: 0.97 },
+  hidden: { opacity: 0, scale: 0.98 },
   visible: {
     opacity: 1,
     scale: 1,
     transition: {
-      duration: 0.2,
+      duration: 0.18,
       ease: "easeOut",
     },
   },

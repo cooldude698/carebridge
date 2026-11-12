@@ -1,7 +1,7 @@
 /**
- * PatientRow component (Daisy × Claud Tactile Neo-Brutalist Edition)
+ * PatientRow component (Minimal Clinical SaaS Edition)
  * ─────────────────────────────────────────────────────────────────
- * Doctor portal patient list row styled as tactile physical cards.
+ * Doctor portal patient list row styled as a clean clinical list item.
  */
 
 import * as React from "react";
@@ -107,7 +107,7 @@ export const PatientRow: React.FC<PatientRowProps> = (props) => {
     <motion.div
       layout
       layoutId={`patient-row-${id}`}
-      transition={{ duration: 0.22, ease: "easeOut" }}
+      transition={{ duration: 0.2, ease: "easeOut" }}
       role="button"
       tabIndex={0}
       aria-pressed={isSelected}
@@ -115,19 +115,19 @@ export const PatientRow: React.FC<PatientRowProps> = (props) => {
       onClick={handleClick}
       onKeyDown={handleKey}
       className={[
-        "flex items-center gap-3.5 p-3.5 rounded-2xl border-2 border-[var(--ink-900)]",
-        "cursor-pointer select-none transition-colors duration-150 ease-out",
+        "flex items-center gap-3 p-3 rounded-xl border transition-all duration-150 ease-out",
+        "cursor-pointer select-none",
         isSelected
-          ? "bg-[#D4F77C] shadow-[3px_3px_0px_#121214] -translate-y-0.5"
-          : "bg-white hover:bg-[#FAF8F5] shadow-[2px_2px_0px_#121214] hover:shadow-[3px_3px_0px_#121214]",
+          ? "bg-[#F0FDFA] border-[#0D9488] shadow-xs"
+          : "bg-white border-[#E2E8F0] hover:bg-[#F8FAFC] hover:border-[#CBD5E1] shadow-2xs",
         props.className || "",
       ]
         .filter(Boolean)
         .join(" ")}
     >
-      {/* Avatar with 2px border */}
+      {/* Clean Avatar */}
       <div
-        className="w-10 h-10 rounded-full border-2 border-[var(--ink-900)] bg-white flex items-center justify-center font-display font-bold text-xs shrink-0 shadow-[1.5px_1.5px_0px_#121214]"
+        className="w-9 h-9 rounded-full bg-[#F1F5F9] border border-[#E2E8F0] text-[#0F172A] flex items-center justify-center font-display font-semibold text-xs shrink-0"
         aria-hidden="true"
       >
         {initials(name)}
@@ -135,15 +135,15 @@ export const PatientRow: React.FC<PatientRowProps> = (props) => {
 
       {/* Name + reason */}
       <div className="flex-1 min-w-0">
-        <div className="flex items-baseline gap-2">
-          <span className="font-display font-bold text-sm text-[var(--ink-900)] truncate">
+        <div className="flex items-baseline gap-1.5">
+          <span className="font-display font-semibold text-sm text-[#0F172A] truncate">
             {name}
           </span>
-          <span className="font-data text-[11px] text-[var(--ink-500)] font-bold shrink-0">
+          <span className="font-data text-[11px] text-[#64748B] tabular-nums shrink-0">
             {age}y
           </span>
         </div>
-        <p className="font-body text-xs text-[var(--ink-700)] truncate mt-0.5">
+        <p className="font-body text-xs text-[#64748B] truncate mt-0.5">
           {topReason}
         </p>
       </div>
@@ -151,7 +151,7 @@ export const PatientRow: React.FC<PatientRowProps> = (props) => {
       {/* Badge + last seen */}
       <div className="flex flex-col items-end gap-1 shrink-0">
         <RiskBadge band={band} score={score} size="sm" />
-        <div className="flex items-center gap-1 text-[var(--ink-500)] font-data text-[10px]">
+        <div className="flex items-center gap-1 text-[#94A3B8] font-data text-[10px] tabular-nums">
           <Clock size={10} aria-hidden="true" />
           <span>{formatLastSeen(lastSeen)}</span>
         </div>

@@ -1,84 +1,56 @@
-# CareBridge Design System (Daisy × Claud Neo-Editorial Edition)
-*Crafted for the CareBridge Chronic Care Management Platform*
+# CareBridge Design System (Minimal Clinical SaaS Edition)
+*Engineered for Google BuilderCon | CareBridge Chronic Care Platform*
 
 ---
 
-## 1. Visual Direction & Atmosphere
-Inspired by the high-craft artistic editorial design of **Daisy** and the whimsical tactile brutalism of **Claud**:
+## 1. Visual Philosophy & Atmosphere
+CareBridge adheres to a calm, crisp, high-trust **minimal clinical SaaS interface** (inspired by Linear, Stripe, Apple Health, and modern clinical EHR platforms):
 
-- **Tactile Paper Canvas**: Warm cream/ivory artist paper background (`#FBF9F4`) overlaid with a delicate graph paper grid (`28px × 28px`).
-- **High-Contrast Carbon Outlines**: Crisp `2px solid #121214` ink strokes across cards, buttons, badges, and illustrations.
-- **Neo-Brutalist Tactile Shadows**: Offset hard drop-shadows (`3px 3px 0px #121214` and `4px 4px 0px #121214`) that give physical depth and a satisfying click/press sensation.
-- **Scrapbook Fan & Collages**: Tilted polaroid cards, rotated sticky note tags (`-4°` to `+4°`), circular stamp badges, and surrealist medical/botanical art collages.
-- **Playful Character Accents**: Whimsical cartoon cloud mascots, smiling pills, hand-drawn stethoscopes, and ribbon doodles that make healthcare warm and human.
+- **Clean Medical Canvas**: Soft neutral slate/blue-gray background (`#F8FAFC`) with pure white card surfaces (`#FFFFFF`).
+- **Hairline Precision**: 1px subtle borders (`#E2E8F0` / `#CBD5E1`) instead of heavy brutalist black outlines.
+- **Restrained Elevation**: Soft, diffused shadows (`0 1px 2px rgba(15, 23, 42, 0.04)`) with gentle hover depth.
+- **Focused Clinical Typography**: 
+  - **Display (`Plus Jakarta Sans`)**: Modern, confident sans-serif for headings, metrics, and navigation.
+  - **Body (`DM Sans`)**: Highly legible, approachable sans-serif for patient summaries, clinical instructions, and form fields.
+  - **Data (`Sora` with `tabular-nums`)**: Fixed-width numeric alignment for heart rate, blood pressure, SpO2, steps, and timestamps.
+- **Zero Cartoons, Zero Gimmicks**: No stickers, tilted polaroids, or doodle mascots. Clean geometric status pills and clinical icons only.
 
 ---
 
 ## 2. Color Palette & Tokens
 
-### Canvas & Ink
+### Canvas & Neutral Ink
 | Token | Hex | Usage |
 |---|---|---|
-| `--canvas-paper` | `#FBF9F4` | Primary warm paper background |
-| `--canvas-grid` | `#E8E4D8` | Delicate 28px square graph paper grid lines |
-| `--ink-900` | `#121214` | Primary text, 2px borders, tactile shadows |
-| `--ink-700` | `#2D2D35` | Secondary text, subheads |
-| `--ink-500` | `#5F5F6E` | Tertiary notes, metadata |
-| `--ink-300` | `#D5D2C7` | Muted hairline borders |
+| `--canvas-paper` | `#F8FAFC` | Primary application canvas |
+| `--surface-0` | `#FFFFFF` | Standard card and container surface |
+| `--surface-50` | `#F1F5F9` | Secondary background, table headers |
+| `--surface-100` | `#E2E8F0` | Subtle dividers and chip backgrounds |
+| `--surface-teal` | `#F0FDFA` | Clinical highlight and active pill background |
+| `--ink-900` | `#0F172A` | Primary typography and dark headers |
+| `--ink-700` | `#334155` | Secondary body text |
+| `--ink-500` | `#64748B` | Muted labels, timestamps, metadata |
+| `--ink-300` | `#CBD5E1` | Hairline border |
+| `--ink-200` | `#E2E8F0` | Card border & dividers |
 
-### Pastel & Highlight Accents (Daisy × Claud)
+### Clinical Brand Accents
 | Token | Hex | Usage |
 |---|---|---|
-| `--accent-pink` | `#FF5C98` | Fluorescent highlighter marker for key hero keywords |
-| `--accent-lime` | `#D4F77C` | Pistachio green for primary CTA buttons & waitlist tags |
-| `--accent-yellow` | `#FEE159` | Butter yellow for sticky notes & active alerts |
-| `--accent-lavender` | `#EDE9FE` | Claud lilac/lavender for cloud badges & secondary cards |
-| `--accent-mint` | `#6EE7B7` | Fresh mint for verified stamps & normal vitals |
-| `--surface-card` | `#FFFFFF` | Crisp white card surfaces |
+| `--brand-teal` | `#0D9488` | Core clinical action, active tabs, buttons |
+| `--brand-teal-hover` | `#0F766E` | Hover state for primary buttons |
+| `--brand-indigo` | `#4F46E5` | Secondary data tracks & telemetry line charts |
 
-### Clinical Risk System (Reserved for Risk Badges & Status)
-| Level | Text & Icon | Background | Border |
+### Semantic Clinical Risk Badges (Strictly Clinical Status — Never Decoration)
+| Band | Text | Background | Border |
 |---|---|---|---|
-| **High Risk (Red)** | `#DC2626` | `#FEE2E2` | `2px solid #DC2626` or `#121214` |
-| **Moderate (Amber)** | `#D97706` | `#FEF3C7` | `2px solid #D97706` or `#121214` |
-| **Low Risk (Green)** | `#15803D` | `#DCFCE7` | `2px solid #15803D` or `#121214` |
+| **High Risk (Red)** | `#DC2626` | `#FEF2F2` | `1px solid #FECACA` |
+| **Moderate (Amber)** | `#D97706` | `#FFFBEB` | `1px solid #FDE68A` |
+| **Low Risk (Green)** | `#15803D` | `#F0FDF4` | `1px solid #BBF7D0` |
 
 ---
 
-## 3. Typography System
-Three harmonized typefaces create editorial authority with tactile playfulness:
-
-1. **Editorial Serif (`Playfair Display`)**:
-   - Used for main headlines, hero titles, and section callouts.
-   - Elegant, high-contrast, with italic accents and bold presence.
-2. **Tactile Monospace (`Space Mono`)**:
-   - Used for subheads, sticky note tags, clinical timestamps, pill labels, and metrics.
-   - Provides a clean typewriter/field-notebook feeling.
-3. **Modern Sans (`Plus Jakarta Sans` / `DM Sans`)**:
-   - Used for dense body text, patient summaries, form inputs, and clinical briefs.
-   - High legibility across screen sizes.
-
----
-
-## 4. Tactile Components
-
-### 1. The Fan Deck (Hero Centerpiece)
-A hand-arranged stack of 5 overlapping tilted cards with real patient telemetry, sticky notes, and badges:
-- **Card 1 (-4°)**: Senior Voice Logging Polaroid with Hindi speech bubble.
-- **Card 2 (-2°)**: Clinical Rule Engine woodcut card with vintage heart illustration.
-- **Card 3 (0°)**: "Let it Flow" baseline vitals poster with daisy floral illustration.
-- **Card 4 (+2°)**: Doctor Pre-Consult AI Brief with Dr. Meera Rao portrait stamp.
-- **Card 5 (+4°)**: Family WhatsApp Escalation & Hospital ROI card.
-
-### 2. Interactive Feature Tabs
-Rounded cards with 2px borders that switch between interactive states:
-- "15-second pre-consult brief"
-- "8 explainable triage rules"
-- "Voice-first senior logging in Hindi/Kannada"
-- "Multi-tier WhatsApp family alerts"
-
-### 3. Live Simulation Sandbox
-Embedded interactive triage tester with one-tap event injections (`BP Spike 155/95`, `Log Evening Meds`, `Step Drop`) demonstrating real-time risk re-scoring.
-
-### 4. Claud-Style 4 Portals
-Pastel cards with `#1`, `#2`, `#3`, `#4` black circle pills, cloud badges, and direct launch links to `/doctor`, `/patient`, `/family`, and `/admin`.
+## 3. Component Standards
+- **Buttons**: Minimum touch target of 44px (`48px` for patient actions), subtle border, clear focus ring (`#0D9488`).
+- **Cards**: `bg-white border border-[#E2E8F0] rounded-xl shadow-card`.
+- **Telemetry Charts**: Clean Recharts graphs with `#E2E8F0` hairline grid, `#0D9488` and `#4F46E5` trendlines.
+- **Senior Accessibility**: Patient mobile views enforce `>= 18px` body copy and high contrast ratios conforming to WCAG AA.

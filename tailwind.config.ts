@@ -10,17 +10,17 @@ const config: Config = {
   theme: {
     extend: {
       fontFamily: {
-        primary: ["Montserrat", "sans-serif"],
-        display: ["Montserrat", "sans-serif"],
-        serif: ["Montserrat", "sans-serif"],
-        montserrat: ["Montserrat", "sans-serif"],
-        secondary: ["DM Sans", "sans-serif"],
-        sans: ["DM Sans", "sans-serif"],
-        body: ["DM Sans", "sans-serif"],
-        dmsans: ["DM Sans", "sans-serif"],
-        mono: ["Sora", "sans-serif"],
-        data: ["Sora", "sans-serif"],
-        sora: ["Sora", "sans-serif"],
+        display: ["var(--font-display)", "sans-serif"],
+        primary: ["var(--font-display)", "sans-serif"],
+        serif: ["var(--font-display)", "sans-serif"],
+        montserrat: ["var(--font-display)", "sans-serif"],
+        body: ["var(--font-body)", "sans-serif"],
+        sans: ["var(--font-body)", "sans-serif"],
+        secondary: ["var(--font-body)", "sans-serif"],
+        dmsans: ["var(--font-body)", "sans-serif"],
+        data: ["var(--font-data)", "sans-serif"],
+        mono: ["var(--font-data)", "sans-serif"],
+        sora: ["var(--font-data)", "sans-serif"],
       },
       colors: {
         paper: "var(--canvas-paper)",
@@ -37,7 +37,8 @@ const config: Config = {
           50: "var(--surface-50)",
           100: "var(--surface-100)",
           warm: "var(--surface-warm)",
-          paper: "var(--canvas-paper)",
+          teal: "var(--surface-teal)",
+          paper: "var(--surface-paper)",
         },
         accent: {
           pink: "var(--accent-pink)",
@@ -52,6 +53,7 @@ const config: Config = {
         },
         brand: {
           teal: "#0D9488",
+          "teal-hover": "#0F766E",
           indigo: "#4F46E5",
           lime: "var(--accent-lime)",
           pink: "var(--accent-pink)",
@@ -77,10 +79,11 @@ const config: Config = {
         pill: "var(--r-pill)",
       },
       boxShadow: {
-        brutal: "var(--shadow-brutal)",
-        "brutal-sm": "var(--shadow-brutal-sm)",
-        "brutal-lg": "var(--shadow-brutal-lg)",
-        card: "var(--shadow-brutal)",
+        card: "var(--shadow-card)",
+        hover: "var(--shadow-hover)",
+        brutal: "var(--shadow-card)",
+        "brutal-sm": "var(--shadow-card)",
+        "brutal-lg": "var(--shadow-hover)",
       },
       maxWidth: {
         portal: "var(--max-portal)",

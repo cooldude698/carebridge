@@ -1,76 +1,77 @@
 /**
- * CareBridge Design Tokens (Daisy × Claud Neo-Editorial Edition)
+ * CareBridge Design Tokens (Minimal Clinical SaaS Edition)
  * ─────────────────────────────────────────────────────────────
  * Source of truth for all CSS custom properties.
- * Embracing warm tactile paper, 2px carbon ink strokes, hard drop-shadows,
- * and pastel accents (lime, pink, butter yellow, lavender, mint).
+ * High-trust, calm, clean medical SaaS aesthetic:
+ * 1px subtle borders, soft elevation, refined typography, zero brutalism.
  */
 
 :root {
-  /* ── Typography (Primary: Montserrat, Secondary: DM Sans, Tertiary: Sora) ── */
-  --font-primary-name: "Montserrat", sans-serif;
-  --font-secondary-name: "DM Sans", sans-serif;
-  --font-sora-name: "Sora", sans-serif;
-  --font-serif-name: "Montserrat", sans-serif;
-  --font-display-name: "Montserrat", sans-serif;
-  --font-mono-name:  "Sora", sans-serif;
-  --font-data-name:  "Sora", sans-serif;
-  --font-sans-name:  "DM Sans", sans-serif;
-  --font-body-name:  "DM Sans", sans-serif;
+  /* ── Typography Variables (fed from next/font in layout) ───── */
+  --font-display-name: var(--font-display, "Plus Jakarta Sans", sans-serif);
+  --font-body-name:    var(--font-body, "DM Sans", sans-serif);
+  --font-data-name:    var(--font-data, "Sora", sans-serif);
+  --font-sans-name:    var(--font-body, "DM Sans", sans-serif);
+  --font-mono-name:    var(--font-data, "Sora", sans-serif);
 
-  /* ── Canvas & Ink ───────────────────────────────────────────── */
-  --canvas-paper:    #FBF9F4; /* warm ivory artist canvas */
-  --canvas-grid:     #E8E4D8; /* 28px grid lines */
-  --ink-900:         #121214; /* deep carbon black for text, 2px borders & shadows */
-  --ink-800:         #1F1F24;
-  --ink-700:         #32323A;
-  --ink-500:         #626270; /* secondary text */
-  --ink-300:         #D6D3C8; /* delicate hairline borders */
-  --ink-200:         #EAE7DC;
+  /* ── Canvas & Surfaces ─────────────────────────────────────── */
+  --canvas-paper:      #F8FAFC; /* crisp, clean clinic light gray-blue */
+  --canvas-grid:       transparent;
+  --surface-0:         #FFFFFF; /* pure card white */
+  --surface-paper:     #FFFFFF;
+  --surface-50:        #F1F5F9;
+  --surface-100:       #E2E8F0;
+  --surface-warm:      #F8FAFC;
+  --surface-teal:      #F0FDFA; /* subtle clinical teal tint */
 
-  /* ── Surfaces ───────────────────────────────────────────────── */
-  --surface-0:       #FFFFFF;
-  --surface-paper:   #FBF9F4;
-  --surface-50:      #F6F4ED;
-  --surface-100:     #EEEAE0;
-  --surface-warm:    #F8F5EC;
-  --surface-teal:    #E6F9F7;
+  /* ── Text & Borders ────────────────────────────────────────── */
+  --ink-900:           #0F172A; /* primary high-contrast dark slate */
+  --ink-800:           #1E293B;
+  --ink-700:           #334155; /* secondary body text */
+  --ink-500:           #64748B; /* muted labels & tertiary info */
+  --ink-300:           #CBD5E1; /* hairline border */
+  --ink-200:           #E2E8F0; /* card & divider borders */
 
-  /* ── Accent Highlights (Daisy & Claud Inspired) ─────────────── */
-  --accent-pink:     #FF5C98; /* fluorescent marker highlighter */
-  --accent-lime:     #D4F77C; /* Daisy pistachio green CTA */
-  --accent-lime-dark:#BBE856;
-  --accent-yellow:   #FEE159; /* sticky butter yellow */
-  --accent-lavender: #EDE9FE; /* Claud cloud lilac */
-  --accent-lavender-dark: #DDD6FE;
-  --accent-mint:     #6EE7B7; /* safe / verified status */
-  --accent-sky:      #BAE6FD;
-  --accent-orange:   #FDBA74;
+  /* ── Clinical Brand Accents ────────────────────────────────── */
+  --brand-teal:        #0D9488; /* core clinical teal */
+  --brand-teal-hover:  #0F766E;
+  --brand-indigo:      #4F46E5; /* companion & secondary accent */
 
-  /* ── Clinical Risk Colors ───────────────────────────────────── */
-  --risk-red:        #DC2626;
-  --risk-red-bg:     #FEE2E2;
-  --risk-amber:      #D97706;
-  --risk-amber-bg:   #FEF3C7;
-  --risk-green:      #15803D;
-  --risk-green-bg:   #DCFCE7;
+  /* Legacy variable mappings (softened to prevent broken views) */
+  --accent-pink:       #0D9488;
+  --accent-lime:       #F0FDFA;
+  --accent-lime-dark:  #CCFBF1;
+  --accent-yellow:     #FFFBEB;
+  --accent-lavender:   #F1F5F9;
+  --accent-lavender-dark: #E2E8F0;
+  --accent-mint:       #15803D;
+  --accent-sky:        #F0F9FF;
+  --accent-orange:     #D97706;
 
-  /* ── Tactile Borders & Radii ────────────────────────────────── */
-  --border-width:    2px;
-  --r-sm:            8px;
-  --r-md:            12px;
-  --r-lg:            20px;
-  --r-xl:            28px;
-  --r-pill:          9999px;
+  /* ── Semantic Risk Colors (Clinical state only — never decoration) */
+  --risk-red:          #DC2626;
+  --risk-red-bg:       #FEF2F2;
+  --risk-amber:        #D97706;
+  --risk-amber-bg:     #FFFBEB;
+  --risk-green:        #15803D;
+  --risk-green-bg:     #F0FDF4;
 
-  /* ── Hard Tactile Shadows (Neo-Brutalist Depth) ─────────────── */
-  --shadow-brutal-sm: 2px 2px 0px #121214;
-  --shadow-brutal:    4px 4px 0px #121214;
-  --shadow-brutal-lg: 6px 6px 0px #121214;
-  --shadow-card:      4px 4px 0px #121214;
-  --shadow-hover:     6px 6px 0px #121214;
+  /* ── Minimal Borders, Radii & Soft Elevation ───────────────── */
+  --border-width:      1px;
+  --r-sm:              6px;
+  --r-md:              10px;
+  --r-lg:              14px;
+  --r-xl:              16px;
+  --r-pill:            9999px;
 
-  /* ── Layout ─────────────────────────────────────────────────── */
-  --max-portal:       1280px;
-  --max-patient:      480px;
+  /* Modern soft shadows */
+  --shadow-card:       0 1px 2px rgba(15, 23, 42, 0.04), 0 1px 3px rgba(15, 23, 42, 0.06);
+  --shadow-hover:      0 4px 12px rgba(15, 23, 42, 0.08);
+  --shadow-brutal-sm:  0 1px 2px rgba(15, 23, 42, 0.04);
+  --shadow-brutal:     0 1px 3px rgba(15, 23, 42, 0.06);
+  --shadow-brutal-lg:  0 4px 12px rgba(15, 23, 42, 0.08);
+
+  /* ── Layout Maximums ───────────────────────────────────────── */
+  --max-portal:        1280px;
+  --max-patient:       480px;
 }

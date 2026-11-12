@@ -1,21 +1,14 @@
 /**
- * MedicineCard component (owner: Swapin)
+ * MedicineCard component (Minimal Clinical SaaS Edition)
  * ─────────────────────────────────────────────────────────
  * Displays a scheduled medication for the patient portal.
- *
- * Rules:
- *  - Font: Montserrat (name), DM Sans (dose, timing, instructions), Sora (time/status)
- *  - Large, easily-tappable "Taken" button (>= 48px height for elderly accessibility)
- *  - Status badge: pending (teal/neutral), taken (green), missed (amber/red)
- *  - No embedded data fetching — purely driven by props
+ * Clean, accessible, senior-friendly clinical styling.
  */
 
 "use client";
 
 import * as React from "react";
 import { Pill, Check, Clock, AlertCircle } from "lucide-react";
-import { Card } from "./Card";
-import { Button } from "./Button";
 
 export type MedicineStatus = "pending" | "taken" | "missed";
 
@@ -61,45 +54,49 @@ export function MedicineCard({
 
   return (
     <div
-      className={`bg-white rounded-[20px] border-2 border-ink-900 shadow-[3px_3px_0px_#121214] p-3.5 sm:p-4.5 transition-all duration-200 ${
-        isTaken ? "bg-emerald-50/40 border-emerald-600 shadow-[2px_2px_0px_#15803D]" : ""
+      className={`bg-white rounded-xl border p-4 transition-all duration-150 ${
+        isTaken
+          ? "border-[#BBF7D0] bg-[#F0FDF4]/50 shadow-xs"
+          : isMissed
+          ? "border-[#FDE68A] bg-[#FFFBEB]/50 shadow-xs"
+          : "border-[#E2E8F0] hover:border-[#CBD5E1] shadow-card"
       } ${className}`}
     >
       <div className="flex items-center justify-between gap-3">
         {/* Medicine details */}
         <div className="flex items-center gap-3 min-w-0">
           <div
-            className={`w-10 h-10 rounded-xl border-2 border-ink-900 flex items-center justify-center shrink-0 ${
+            className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 border ${
               isTaken
-                ? "bg-[#DCFCE7] text-emerald-800 border-emerald-600"
+                ? "bg-[#DCFCE7] text-[#15803D] border-[#BBF7D0]"
                 : isMissed
-                ? "bg-[#FEF3C7] text-amber-800"
-                : "bg-[#EDE9FE] text-ink-900"
+                ? "bg-[#FEF3C7] text-[#D97706] border-[#FDE68A]"
+                : "bg-[#F1F5F9] text-[#0F172A] border-[#E2E8F0]"
             }`}
             aria-hidden="true"
           >
             {isTaken ? (
-              <Check className="w-5 h-5 stroke-[2.5]" />
+              <Check className="w-5 h-5 stroke-[2]" />
             ) : isMissed ? (
-              <AlertCircle className="w-5 h-5 stroke-[2.2]" />
+              <AlertCircle className="w-5 h-5 stroke-[2]" />
             ) : (
-              <Pill className="w-5 h-5 stroke-[2.2]" />
+              <Pill className="w-5 h-5 stroke-[2]" />
             )}
           </div>
 
           <div className="min-w-0">
-            <div className="flex items-center gap-1.5 flex-wrap">
-              <h3 className="font-display font-bold text-base sm:text-lg text-ink-900 leading-tight truncate">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h3 className="font-display font-semibold text-base sm:text-lg text-[#0F172A] leading-tight truncate">
                 {name}
               </h3>
-              <span className="font-data text-[11px] text-ink-700 bg-[#FAF8F5] border border-ink-300 px-2 py-0.5 rounded-full font-bold shrink-0">
+              <span className="font-data text-xs text-[#334155] bg-[#F1F5F9] border border-[#E2E8F0] px-2 py-0.5 rounded-full font-medium shrink-0">
                 {dose}
               </span>
             </div>
 
-            <div className="flex items-center gap-1.5 mt-0.5 text-xs text-ink-600 font-body">
-              <Clock className="w-3.5 h-3.5 text-ink-500 shrink-0" aria-hidden="true" />
-              <span className="font-data font-bold text-ink-800">
+            <div className="flex items-center gap-1.5 mt-1 text-xs text-[#64748B] font-body">
+              <Clock className="w-3.5 h-3.5 text-[#64748B] shrink-0" aria-hidden="true" />
+              <span className="font-data font-semibold text-[#0F172A]">
                 {time}
               </span>
               <span>•</span>
@@ -107,14 +104,14 @@ export function MedicineCard({
             </div>
 
             {isTaken && takenAt && (
-              <p className="font-body text-[11px] text-emerald-700 font-bold mt-0.5">
+              <p className="font-body text-xs text-[#15803D] font-medium mt-1">
                 ✓ Logged at {takenAt}
               </p>
             )}
 
             {isMissed && (
-              <p className="font-body text-[11px] text-amber-700 font-bold mt-0.5">
-                ⚠️ Scheduled dose missed
+              <p className="font-body text-xs text-[#D97706] font-medium mt-1">
+                Scheduled dose missed
               </p>
             )}
           </div>
@@ -123,15 +120,15 @@ export function MedicineCard({
         {/* Action Button */}
         <div className="shrink-0 flex items-center">
           {isTaken ? (
-            <div className="flex items-center gap-1.5">
-              <span className="font-data text-xs font-bold uppercase tracking-wider text-emerald-900 bg-[#DCFCE7] border border-emerald-600 px-3 py-1.5 rounded-xl shadow-[1px_1px_0px_#15803D]">
+            <div className="flex items-center gap-2">
+              <span className="font-data text-xs font-semibold text-[#15803D] bg-[#DCFCE7] border border-[#BBF7D0] px-3 py-1.5 rounded-lg shadow-2xs">
                 Taken ✓
               </span>
               {onUndo && (
                 <button
                   type="button"
                   onClick={onUndo}
-                  className="font-body text-xs text-ink-500 hover:text-ink-900 underline ml-0.5 cursor-pointer"
+                  className="font-body text-xs text-[#64748B] hover:text-[#0F172A] underline cursor-pointer"
                 >
                   Undo
                 </button>
@@ -142,11 +139,11 @@ export function MedicineCard({
               type="button"
               disabled={isBusy}
               onClick={handleTake}
-              className="bg-[#D4F77C] hover:bg-[#CEF267] text-ink-900 font-display font-bold text-xs sm:text-sm px-3.5 sm:px-4 py-2 min-h-[42px] rounded-xl border-2 border-ink-900 shadow-[2px_2px_0px_#121214] active:translate-y-0.5 flex items-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
+              className="bg-[#0D9488] hover:bg-[#0F766E] text-white font-display font-medium text-xs sm:text-sm px-4 py-2 min-h-[44px] rounded-lg shadow-sm flex items-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
               aria-label={`Mark ${name} ${dose} as taken`}
             >
-              <Check className="w-4 h-4 stroke-[2.5]" />
-              <span>Taken</span>
+              <Check className="w-4 h-4 stroke-[2]" />
+              <span>Mark Taken</span>
             </button>
           )}
         </div>

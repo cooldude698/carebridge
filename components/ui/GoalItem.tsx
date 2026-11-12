@@ -27,18 +27,18 @@ export const GoalItem: React.FC<GoalItemProps> = ({
   const getCategoryIcon = () => {
     const cat = category.toLowerCase();
     if (cat.includes('bp') || cat.includes('blood pressure') || cat.includes('heart')) {
-      return <Heart className="w-5 h-5 text-teal-600 shrink-0" />;
+      return <Heart className="w-4 h-4 text-[#0D9488] shrink-0" />;
     }
     if (cat.includes('step') || cat.includes('walk') || cat.includes('activity')) {
-      return <Activity className="w-5 h-5 text-teal-600 shrink-0" />;
+      return <Activity className="w-4 h-4 text-[#0D9488] shrink-0" />;
     }
     if (cat.includes('med') || cat.includes('pill') || cat.includes('drug')) {
-      return <Pill className="w-5 h-5 text-teal-600 shrink-0" />;
+      return <Pill className="w-4 h-4 text-[#0D9488] shrink-0" />;
     }
     if (cat.includes('sugar') || cat.includes('glucose')) {
-      return <Droplets className="w-5 h-5 text-teal-600 shrink-0" />;
+      return <Droplets className="w-4 h-4 text-[#0D9488] shrink-0" />;
     }
-    return <Sparkles className="w-5 h-5 text-teal-600 shrink-0" />;
+    return <Sparkles className="w-4 h-4 text-[#0D9488] shrink-0" />;
   };
 
   const handleClick = () => {
@@ -60,16 +60,18 @@ export const GoalItem: React.FC<GoalItemProps> = ({
       aria-pressed={isCompleted}
       onClick={handleClick}
       onKeyDown={handleKeyDown}
-      className={`group flex items-center justify-between p-3 sm:p-3.5 min-h-[54px] rounded-xl border-2 border-ink-900 transition-all select-none ${
+      className={`group flex items-center justify-between p-3.5 min-h-[52px] rounded-xl border border-l-2 border-l-[#0D9488] transition-all select-none ${
         isCompleted
-          ? 'bg-emerald-50 border-emerald-600 shadow-[1px_1px_0px_#15803D] cursor-default'
-          : 'bg-white shadow-[2px_2px_0px_#121214] hover:bg-[#FAF8F5] cursor-pointer active:translate-y-0.5'
-      } ${disabled ? 'opacity-60 pointer-events-none' : ''} ${className}`}
+          ? 'bg-[#F0FDF4] border-[#BBF7D0] border-l-[#15803D] cursor-default'
+          : 'bg-white border-[#E2E8F0] hover:border-[#CBD5E1] shadow-card cursor-pointer active:scale-[0.99]'
+      } ${disabled ? 'opacity-50 pointer-events-none' : ''} ${className}`}
     >
       <div className="flex items-center gap-3 min-w-0 pr-2">
         <div
-          className={`p-2 rounded-lg shrink-0 transition-colors border border-ink-900 ${
-            isCompleted ? 'bg-emerald-100 text-emerald-800' : 'bg-[#D4F77C] text-ink-900'
+          className={`p-2 rounded-lg shrink-0 border ${
+            isCompleted
+              ? 'bg-[#DCFCE7] text-[#15803D] border-[#BBF7D0]'
+              : 'bg-[#F0FDFA] text-[#0D9488] border-[#CCFBF1]'
           }`}
         >
           {getCategoryIcon()}
@@ -77,16 +79,16 @@ export const GoalItem: React.FC<GoalItemProps> = ({
 
         <div className="min-w-0">
           <p
-            className={`font-body font-bold text-sm sm:text-base leading-snug tracking-tight transition-colors ${
+            className={`font-body font-medium text-sm sm:text-base leading-snug tracking-tight ${
               isCompleted
-                ? 'line-through text-ink-400 font-medium'
-                : 'text-ink-900'
+                ? 'line-through text-[#94A3B8]'
+                : 'text-[#0F172A]'
             }`}
           >
             {target}
           </p>
           {by && (
-            <p className="font-body text-xs text-ink-500 mt-0.5 font-medium">
+            <p className="font-body text-xs text-[#64748B] mt-0.5">
               By {by}
             </p>
           )}
@@ -95,13 +97,13 @@ export const GoalItem: React.FC<GoalItemProps> = ({
 
       <div className="shrink-0 pl-2">
         {isCompleted ? (
-          <div className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-600 font-data text-xs font-bold">
-            <CheckCircle2 className="w-4 h-4 text-emerald-700" />
+          <div className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-[#DCFCE7] text-[#15803D] border border-[#BBF7D0] font-data text-xs font-semibold">
+            <CheckCircle2 className="w-3.5 h-3.5 text-[#15803D]" />
             <span>Done</span>
           </div>
         ) : (
-          <div className="w-6 h-6 rounded-full border-2 border-ink-900 group-hover:bg-[#D4F77C] flex items-center justify-center transition-colors">
-            <Circle className="w-3 h-3 text-transparent group-hover:text-ink-900 fill-current transition-colors" />
+          <div className="w-5 h-5 rounded-full border border-[#CBD5E1] group-hover:border-[#0D9488] flex items-center justify-center transition-colors">
+            <Circle className="w-2.5 h-2.5 text-transparent group-hover:text-[#0D9488] fill-current transition-colors" />
           </div>
         )}
       </div>

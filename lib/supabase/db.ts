@@ -15,6 +15,10 @@ import {
   WearableDevice,
   SymptomLog,
   WhatsAppNotificationLog,
+  SimEventRequest,
+  SimEventResponse,
+  AdminROIResponse,
+  Alert,
 } from "@/lib/types";
 import { store } from "@/lib/supabase/localStore";
 import { isServerSupabaseConfigured, createClient } from "@/lib/supabase/server";
@@ -354,6 +358,23 @@ export async function createPrescriptionDb(input: {
   whatsappStatus: "sent" | "simulated_sent" | "failed";
 }> {
   const result = store.createPrescription(input);
+
+  // Dispatch auditable WhatsApp notification through unified notification service
+  try {
+    const { sendWhatsAppMessage } = await import("@/lib/notifications/whatsapp");
+    const patientDetail = await getPatientDetailDb(input.patientId);
+    const phone = patientDetail?.profile.whatsapp_number || "+91 98450 12345";
+    const waLog = await sendWhatsAppMessage({
+      patientId: input.patientId,
+      recipientPhone: phone,
+      recipientRole: "patient",
+      eventType: "prescription_issued",
+      message: `CareBridge: New prescription issued by ${result.prescription.doctor_name}. Follow up by ${result.prescription.follow_up_date || "2 weeks"}.`,
+    });
+    result.whatsappStatus = waLog.status;
+  } catch {
+    // Non-blocking: localStore already recorded the simulated fallback
+  }
 
   if (!isLocalOnly()) {
     const supabase = createClient();
@@ -867,4 +888,141 @@ export async function resetDemoStateDb(): Promise<void> {
       }
     }
   }
+}
+
+// ---------------------------------------------------------------------------
+// Simulation, ROI, Notifications & Alerts
+// ---------------------------------------------------------------------------
+
+export async function handleSimEventDb(req: SimEventRequest): Promise<SimEventResponse> {
+  const result = store.handleSimEvent(req);
+
+  if (!isLocalOnly()) {
+    const supabase = createClient();
+    if (supabase) {
+      try {
+        const pVitals = store.getState().vitals.filter((v) => v.patient_id === req.patientId).slice(0, 5);
+        if (pVitals.length > 0) {
+          await supabase.from("vitals").upsert(
+            pVitals.map((v) => ({
+              id: v.id,
+              patient_id: v.patient_id,
+              type: v.type,
+              value_a: v.value_a,
+              value_b: v.value_b ?? null,
+              recorded_at: v.recorded_at,
+              source: v.source || "simulator",
+              device_id: v.device_id || null,
+            })),
+            { onConflict: "id" }
+          );
+        }
+
+        const pAlerts = store.getState().alerts.filter((a) => a.patient_id === req.patientId).slice(0, 3);
+        if (pAlerts.length > 0) {
+          await supabase.from("alerts").upsert(
+            pAlerts.map((a) => ({
+              id: a.id,
+              patient_id: a.patient_id,
+              level: a.level,
+              audience: a.audience,
+              message: a.message,
+              created_at: a.created_at,
+              acknowledged_at: a.acknowledged_at,
+            })),
+            { onConflict: "id" }
+          );
+        }
+      } catch (err) {
+        console.warn("[db.ts] Supabase handleSimEvent failed to mirror to Postgres", err);
+      }
+    }
+  }
+
+  return result;
+}
+
+export async function getAdminRoiDb(): Promise<AdminROIResponse> {
+  return store.getAdminROI();
+}
+
+export async function getWhatsAppLogsDb(patientId?: string): Promise<WhatsAppNotificationLog[]> {
+  if (!isLocalOnly()) {
+    const supabase = createClient();
+    if (supabase) {
+      try {
+        let query = supabase
+          .from("whatsapp_notifications")
+          .select("*")
+          .order("created_at", { ascending: false });
+        if (patientId) {
+          query = query.eq("patient_id", patientId);
+        }
+        const { data, error } = await query;
+        if (!error && data && data.length > 0) {
+          return data;
+        }
+      } catch (err) {
+        console.warn("[db.ts] Supabase getWhatsAppLogs failed, falling back to localStore", err);
+      }
+    }
+  }
+
+  return store.getWhatsAppLogs(patientId);
+}
+
+export async function getAiQaLogsDb(patientId?: string): Promise<any[]> {
+  if (!isLocalOnly()) {
+    const supabase = createClient();
+    if (supabase) {
+      try {
+        let query = supabase
+          .from("ai_qa_logs")
+          .select("*")
+          .order("created_at", { ascending: false });
+        if (patientId) {
+          query = query.eq("patient_id", patientId);
+        }
+        const { data, error } = await query;
+        if (!error && data && data.length > 0) {
+          return data;
+        }
+      } catch (err) {
+        console.warn("[db.ts] Supabase getAiQaLogs failed, falling back to localStore", err);
+      }
+    }
+  }
+
+  const logs = store.getState().aiQaLogs || [];
+  return patientId ? logs.filter((l) => l.patient_id === patientId) : logs;
+}
+
+export async function createAlertDb(alert: Alert): Promise<Alert> {
+  store.getState().alerts.unshift(alert);
+
+  if (!isLocalOnly()) {
+    const supabase = createClient();
+    if (supabase) {
+      try {
+        await supabase.from("alerts").insert({
+          id: alert.id,
+          patient_id: alert.patient_id,
+          level: alert.level,
+          audience: alert.audience,
+          message: alert.message,
+          created_at: alert.created_at,
+          acknowledged_at: alert.acknowledged_at,
+        });
+      } catch (err) {
+        console.warn("[db.ts] Supabase createAlert failed to persist to Postgres", err);
+      }
+    }
+  }
+
+  return alert;
+}
+
+export async function getPatientRiskDb(patientId: string): Promise<any> {
+  const patientDetail = await getPatientDetailDb(patientId);
+  return patientDetail?.risk || store.getState().riskScores[patientId] || { score: 10, band: "green", reasons: [] };
 }

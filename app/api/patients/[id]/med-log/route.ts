@@ -50,11 +50,19 @@ export async function POST(
     const total7d = logs7d.length;
     const compliancePct = total7d > 0 ? Math.round((taken7d / total7d) * 100) : 100;
 
+    const isSameDay = (d1: Date, d2: Date) => d1.toDateString() === d2.toDateString();
+    const logsToday = medLogs.filter((m) =>
+      isSameDay(new Date(m.scheduled_at || (m as any).scheduledAt || 0), new Date())
+    );
+    const takenToday = logsToday.filter((m) => m.status === "taken").length;
+    const compliancePctToday = logsToday.length > 0 ? Math.round((takenToday / logsToday.length) * 100) : 100;
+
     return NextResponse.json({
       success: true,
       log: result.log,
       risk: result.risk,
       compliancePct,
+      compliancePctToday,
     });
   } catch (err: any) {
     return NextResponse.json(

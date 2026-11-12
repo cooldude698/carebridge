@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { sendWhatsAppMessage } from "@/lib/notifications/whatsapp";
-import { store } from "@/lib/supabase/localStore";
+import { getWhatsAppLogsDb } from "@/lib/supabase/db";
 
 export const dynamic = "force-dynamic";
 
@@ -8,7 +8,7 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const patientId = searchParams.get("patientId") || undefined;
-    const logs = store.getWhatsAppLogs(patientId);
+    const logs = await getWhatsAppLogsDb(patientId);
     return NextResponse.json(logs);
   } catch (err: any) {
     return NextResponse.json(

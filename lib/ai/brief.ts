@@ -62,21 +62,7 @@ export async function generateBrief(patientId: string): Promise<BriefResult> {
   const geminiApiKey = process.env.GEMINI_API_KEY;
   const anthropicApiKey = process.env.ANTHROPIC_API_KEY;
   const llmApiKey = process.env.LLM_API_KEY;
-  const ollamaBaseUrl = process.env.OLLAMA_BASE_URL;
-
-  const hasLlm = Boolean(geminiApiKey || anthropicApiKey || llmApiKey || ollamaBaseUrl);
-
-  if (!hasLlm) {
-    const result: BriefResult = {
-      text: fallbackText,
-      source: "fallback",
-      sections: fallbackSections,
-      citations: [],
-      generatedAt: new Date().toISOString(),
-    };
-    await persistBrief(patientId, result, supabase);
-    return result;
-  }
+  const ollamaBaseUrl = process.env.OLLAMA_BASE_URL || "http://localhost:11434";
 
   // Attempt LLM generation with 4-second timeout
   const controller = new AbortController();

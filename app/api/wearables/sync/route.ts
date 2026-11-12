@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getWearableDevicesDb, insertVitalsBatchDb } from "@/lib/supabase/db";
+import { getWearableDevicesDb, insertVitalsBatchDb, getPatientRiskDb } from "@/lib/supabase/db";
 import { buildWearableContext } from "@/lib/wearable/processor";
-import { store } from "@/lib/supabase/localStore";
 import { Vital } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -86,7 +85,7 @@ export async function POST(request: NextRequest) {
     );
 
     const wearableContext = await buildWearableContext(patientId);
-    const risk = store.getState().riskScores[patientId] || { score: 10, band: "green", reasons: [] };
+    const risk = await getPatientRiskDb(patientId);
 
     return NextResponse.json({
       success: true,

@@ -15,7 +15,7 @@ export async function POST(request: NextRequest) {
       // Body is optional
     }
 
-    const result = tickEscalation(forceStage);
+    const result = await tickEscalation(forceStage);
     return NextResponse.json(result);
   } catch (err: any) {
     return NextResponse.json(

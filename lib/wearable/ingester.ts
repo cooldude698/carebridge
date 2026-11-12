@@ -27,23 +27,29 @@ export function analyzeWearableTelemetry(vitals: Vital[]): WearableSummary {
   const stepsVitals = vitals.filter((v) => v.type === "steps");
   const spo2Vitals = vitals.filter((v) => v.type === "spo2");
 
-  // Step baseline calculation (first 3 days vs today)
+  // Step baseline calculation: sort chronologically to compute early baseline vs latest
+  const sortedSteps = [...stepsVitals].sort(
+    (a, b) =>
+      new Date(a.recorded_at || (a as any).recordedAt || 0).getTime() -
+      new Date(b.recorded_at || (b as any).recordedAt || 0).getTime()
+  );
+
   const baselineSteps =
-    stepsVitals.length >= 3
+    sortedSteps.length >= 3
       ? Math.round(
-          ((stepsVitals[0].value_a ?? (stepsVitals[0] as any).valueA ?? 5200) +
-            (stepsVitals[1].value_a ?? (stepsVitals[1] as any).valueA ?? 5200) +
-            (stepsVitals[2].value_a ?? (stepsVitals[2] as any).valueA ?? 5200)) /
+          ((sortedSteps[0].value_a ?? (sortedSteps[0] as any).valueA ?? 5200) +
+            (sortedSteps[1].value_a ?? (sortedSteps[1] as any).valueA ?? 5200) +
+            (sortedSteps[2].value_a ?? (sortedSteps[2] as any).valueA ?? 5200)) /
             3
         )
-      : stepsVitals.length > 0
-      ? (stepsVitals[0].value_a ?? (stepsVitals[0] as any).valueA ?? 5200)
+      : sortedSteps.length > 0
+      ? (sortedSteps[0].value_a ?? (sortedSteps[0] as any).valueA ?? 5200)
       : 5200;
 
   const latestSteps =
-    stepsVitals.length > 0
-      ? stepsVitals[stepsVitals.length - 1].value_a ??
-        (stepsVitals[stepsVitals.length - 1] as any).valueA ??
+    sortedSteps.length > 0
+      ? sortedSteps[sortedSteps.length - 1].value_a ??
+        (sortedSteps[sortedSteps.length - 1] as any).valueA ??
         2800
       : 2800;
 
@@ -96,7 +102,12 @@ export function analyzeWearableTelemetry(vitals: Vital[]): WearableSummary {
   }
 
   // Anomaly 3: Critical SpO2 Drop (<92%)
-  const latestSpo2Vital = spo2Vitals[0];
+  const sortedSpo2 = [...spo2Vitals].sort(
+    (a, b) =>
+      new Date(b.recorded_at || (b as any).recordedAt || 0).getTime() -
+      new Date(a.recorded_at || (a as any).recordedAt || 0).getTime()
+  );
+  const latestSpo2Vital = sortedSpo2[0];
   const latestSpo2Val =
     latestSpo2Vital?.value_a ?? (latestSpo2Vital as any)?.valueA ?? null;
   if (latestSpo2Val !== null && latestSpo2Val < 92) {
@@ -106,6 +117,25 @@ export function analyzeWearableTelemetry(vitals: Vital[]): WearableSummary {
       title: "Critically Low Blood Oxygen (SpO2)",
       detail: `Pulse oximetry detected SpO2 at ${latestSpo2Val}%, falling below safe threshold (95-100%).`,
       recommendedAction: "Urgent respiratory evaluation and oxygen saturation verification required.",
+    });
+  }
+
+  // Anomaly 4: Fasting Glucose Spike (>= 180 mg/dL)
+  const glucoseVitals = vitals.filter((v) => v.type === "glucose");
+  const sortedGlu = [...glucoseVitals].sort(
+    (a, b) =>
+      new Date(b.recorded_at || (b as any).recordedAt || 0).getTime() -
+      new Date(a.recorded_at || (a as any).recordedAt || 0).getTime()
+  );
+  const latestGlu = sortedGlu[0];
+  const latestGluVal = latestGlu?.value_a ?? (latestGlu as any)?.valueA ?? null;
+  if (latestGluVal !== null && latestGluVal >= 180) {
+    anomalies.push({
+      type: "GLUCOSE_SPIKE",
+      severity: "HIGH",
+      title: "Elevated Fasting Glucose",
+      detail: `Fasting blood glucose recorded at ${latestGluVal} mg/dL, exceeding target threshold of 180 mg/dL.`,
+      recommendedAction: "Review carbohydrate intake and medication timing before meals.",
     });
   }
 

@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getPatientVitalsDb, insertVitalsBatchDb } from "@/lib/supabase/db";
-import { store } from "@/lib/supabase/localStore";
+import { getPatientVitalsDb, insertVitalsBatchDb, getPatientRiskDb } from "@/lib/supabase/db";
 import { Vital } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -82,7 +81,12 @@ export async function POST(
     const rawId = params.id;
     const patientId = rawId === "patient-ramesh" ? "p1" : rawId;
     const body = await request.json();
-    const { type, valueA, valueB, recordedAt, source, deviceId } = body;
+    const type = body.type;
+    const valueA = typeof body.valueA === "number" ? body.valueA : typeof body.value_a === "number" ? body.value_a : undefined;
+    const valueB = typeof body.valueB === "number" ? body.valueB : typeof body.value_b === "number" ? body.value_b : null;
+    const recordedAt = body.recordedAt || body.recorded_at;
+    const source = body.source;
+    const deviceId = body.deviceId || body.device_id;
 
     if (type === "flag_acknowledged") {
       return NextResponse.json({
@@ -109,14 +113,14 @@ export async function POST(
       patient_id: patientId,
       type: type as Vital["type"],
       value_a: valueA,
-      value_b: typeof valueB === "number" ? valueB : null,
+      value_b: valueB,
       recorded_at: recordedAt || new Date().toISOString(),
       source: source || "wearable",
       device_id: deviceId || null,
     };
 
     const res = await insertVitalsBatchDb(patientId, [vitalReading], deviceId);
-    const risk = store.getState().riskScores[patientId] || { score: 10, band: "green", reasons: [] };
+    const risk = await getPatientRiskDb(patientId);
 
     return NextResponse.json({
       success: true,

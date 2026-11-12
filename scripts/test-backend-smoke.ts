@@ -53,6 +53,8 @@ async function runSmokeTests() {
   const ingesterSummary = analyzeWearableTelemetry(vitalsP1);
   console.assert(typeof ingesterSummary.meanNocturnalHr === "number", "Expected numeric meanNocturnalHr");
   console.assert(ingesterSummary.meanNocturnalHr > 50 && ingesterSummary.meanNocturnalHr < 140, "Nocturnal HR within realistic range");
+  console.assert(ingesterSummary.stepDeclinePercent >= 40, `Expected step decline >= 40%, got ${ingesterSummary.stepDeclinePercent}%`);
+  console.assert(ingesterSummary.anomalies.some((a) => a.type === "STEP_DECLINE"), "Expected STEP_DECLINE anomaly");
   console.log(`✓ 3. Wearable Telemetry Ingester: Nocturnal HR = ${ingesterSummary.meanNocturnalHr} bpm, Step decline = ${ingesterSummary.stepDeclinePercent}%`);
 
   // 3. Wearable Processor (all 7 vital types)
@@ -170,7 +172,7 @@ async function runSmokeTests() {
   console.log(`✓ 12. Sim Event 'spo2_drop': Band flipped to ${simRes.newRisk.band.toUpperCase()} (Score: ${simRes.newRisk.score})`);
 
   // 11. Escalation Tick with WhatsApp Dispatch
-  const escResult = tickEscalation("family");
+  const escResult = await tickEscalation("family");
   console.assert(escResult.fired.length >= 0, "Expected escalation tick result");
   console.log(`✓ 13. Escalation Ladder: Fired = ${escResult.fired.length}, Pending = ${escResult.pendingCount}`);
 

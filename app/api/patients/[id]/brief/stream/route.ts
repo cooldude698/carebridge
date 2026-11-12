@@ -54,24 +54,6 @@ export async function GET(
       }, 4000);
 
       try {
-        if (!geminiApiKey && !anthropicApiKey && !ollamaBaseUrl) {
-          clearTimeout(timeout);
-          // Stream the fallback text smoothly in word tokens
-          const words = fallbackText.split(" ");
-          for (let i = 0; i < words.length; i++) {
-            const token = i === words.length - 1 ? words[i] : words[i] + " ";
-            sendEvent({ type: "token", delta: token });
-            await new Promise((r) => setTimeout(r, 25));
-          }
-          sendEvent({
-            type: "done",
-            citations: [],
-            source: "fallback",
-          });
-          controller.close();
-          return;
-        }
-
         let streamStarted = false;
 
         // 1. Try local Ollama first
@@ -241,6 +223,12 @@ export async function GET(
             source: "llm",
           });
         } else {
+          const words = fallbackText.split(" ");
+          for (let i = 0; i < words.length; i++) {
+            const token = i === words.length - 1 ? words[i] : words[i] + " ";
+            sendEvent({ type: "token", delta: token });
+            await new Promise((r) => setTimeout(r, 20));
+          }
           sendEvent({
             type: "done",
             text: fallbackText,

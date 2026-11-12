@@ -3,9 +3,9 @@ import {
   getDiagnosisReportsDb,
   saveDiagnosisReportDb,
   saveSymptomLogDb,
+  createAlertDb,
 } from "@/lib/supabase/db";
 import { generateDiagnosisReport } from "@/lib/ai/diagnosisGenerator";
-import { store } from "@/lib/supabase/localStore";
 import { Alert, SymptomLog } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -69,7 +69,7 @@ export async function POST(
         created_at: new Date().toISOString(),
         acknowledged_at: null,
       };
-      store.getState().alerts.unshift(alert);
+      await createAlertDb(alert);
     }
 
     return NextResponse.json({ report }, { status: 201 });

@@ -74,7 +74,14 @@ export async function generateDiagnosisReport(
 
   // 2. Nocturnal HR flags
   if (wearableCtx.heartRate.nocturnalMean > 100) {
-    const hrVital = vitals.find((v) => v.type === "hr");
+    const nocturnalHr = vitals.find((v) => {
+      if (v.type !== "hr") return false;
+      const d = new Date(v.recorded_at || (v as any).recordedAt || 0);
+      const h = d.getHours();
+      const utcH = d.getUTCHours();
+      return h >= 23 || h < 5 || utcH >= 23 || utcH < 5;
+    });
+    const hrVital = nocturnalHr || vitals.find((v) => v.type === "hr");
     if (hrVital) readingIds.push(hrVital.id);
 
     riskFlags.push({

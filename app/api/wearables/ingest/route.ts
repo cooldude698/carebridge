@@ -1,7 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import { insertVitalsBatchDb, saveDiagnosisReportDb, getPatientDetailDb } from "@/lib/supabase/db";
+import {
+  insertVitalsBatchDb,
+  saveDiagnosisReportDb,
+  getPatientDetailDb,
+  createAlertDb,
+  getPatientRiskDb,
+} from "@/lib/supabase/db";
 import { buildWearableContext } from "@/lib/wearable/processor";
-import { store } from "@/lib/supabase/localStore";
 import { generateDiagnosisReport } from "@/lib/ai/diagnosisGenerator";
 import { sendWhatsAppMessage } from "@/lib/notifications/whatsapp";
 import { Alert, Vital } from "@/lib/types";
@@ -61,7 +66,7 @@ export async function POST(request: NextRequest) {
 
     // Compute updated context & anomalies
     const wearableContext = await buildWearableContext(patientId);
-    const riskResult = store.getState().riskScores[patientId] || { score: 10, band: "green", reasons: [] };
+    const riskResult = await getPatientRiskDb(patientId);
 
     let diagnosisTriggered = false;
     let diagnosisReportId: string | null = null;
@@ -92,7 +97,7 @@ export async function POST(request: NextRequest) {
           created_at: new Date().toISOString(),
           acknowledged_at: null,
         };
-        store.getState().alerts.unshift(critAlert);
+        await createAlertDb(critAlert);
 
         // Send WhatsApp notification
         const patientDetail = await getPatientDetailDb(patientId);

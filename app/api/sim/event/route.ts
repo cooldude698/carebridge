@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { store } from "@/lib/supabase/localStore";
+import { handleSimEventDb } from "@/lib/supabase/db";
 import { SimEventRequest } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const result = store.handleSimEvent({ patientId, kind, params });
+    const result = await handleSimEventDb({ patientId, kind, params });
     return NextResponse.json(result);
   } catch (err: any) {
     return NextResponse.json(

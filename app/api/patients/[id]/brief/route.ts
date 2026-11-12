@@ -12,10 +12,8 @@ export async function POST(
     const patientId = params.id;
     const brief = await generateBrief(patientId);
     return NextResponse.json(brief);
-  } catch (err: any) {
-    return NextResponse.json(
-      { error: err.message || "Failed to generate pre-consult brief" },
-      { status: 500 }
-    );
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : "Failed to generate pre-consult brief";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

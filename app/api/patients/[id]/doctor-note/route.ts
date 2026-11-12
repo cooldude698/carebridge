@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { store } from "@/lib/supabase/localStore";
 import { createClient } from "@/lib/supabase/server";
+import { extractJsonObject } from "@/lib/ai/llmClient";
 
 export const dynamic = "force-dynamic";
 
@@ -30,12 +31,39 @@ const DOCTOR_NOTE_SYSTEM_PROMPT = `Extract structured care instructions from a d
 }
 Rules: No diagnosis language. No drug dose advice. If a field is unclear, omit it.`;
 
-async function parseDoctorNoteWithLLM(noteText: string): Promise<ParsedInstructions> {
-  const fallback: ParsedInstructions = {
+function buildHeuristicDoctorNote(noteText: string): ParsedInstructions {
+  const goals: ParsedGoal[] = [];
+  const lower = noteText.toLowerCase();
+  if (lower.includes("step") || lower.includes("walk")) {
+    goals.push({
+      category: "steps",
+      target: "Walk 4,000 steps daily",
+      by: new Date(Date.now() + 7 * 86400000).toISOString().split("T")[0],
+    });
+  }
+  if (lower.includes("bp") || lower.includes("pressure")) {
+    goals.push({
+      category: "bp",
+      target: "Monitor morning BP daily",
+      by: new Date(Date.now() + 7 * 86400000).toISOString().split("T")[0],
+    });
+  }
+  if (lower.includes("salt") || lower.includes("diet") || lower.includes("water")) {
+    goals.push({
+      category: "other",
+      target: "Reduce dietary sodium intake",
+      by: new Date(Date.now() + 14 * 86400000).toISOString().split("T")[0],
+    });
+  }
+  return {
     reminders: [],
-    goals: [],
+    goals,
     followUpDate: null,
   };
+}
+
+async function parseDoctorNoteWithLLM(noteText: string): Promise<ParsedInstructions> {
+  const fallback = buildHeuristicDoctorNote(noteText);
 
   const geminiApiKey = process.env.GEMINI_API_KEY;
   const anthropicApiKey = process.env.ANTHROPIC_API_KEY;
@@ -44,19 +72,7 @@ async function parseDoctorNoteWithLLM(noteText: string): Promise<ParsedInstructi
 
   const hasLlm = Boolean(geminiApiKey || anthropicApiKey || llmApiKey || ollamaBaseUrl);
   if (!hasLlm) {
-    // Intelligent heuristic fallback so demo works even without LLM key
-    const goals: ParsedGoal[] = [];
-    const lower = noteText.toLowerCase();
-    if (lower.includes("step") || lower.includes("walk")) {
-      goals.push({ category: "steps", target: "Walk 4,000 steps daily", by: new Date(Date.now() + 7 * 86400000).toISOString().split("T")[0] });
-    }
-    if (lower.includes("bp") || lower.includes("pressure")) {
-      goals.push({ category: "bp", target: "Monitor morning BP daily", by: new Date(Date.now() + 7 * 86400000).toISOString().split("T")[0] });
-    }
-    if (lower.includes("salt") || lower.includes("diet") || lower.includes("water")) {
-      goals.push({ category: "other", target: "Reduce dietary sodium intake", by: new Date(Date.now() + 14 * 86400000).toISOString().split("T")[0] });
-    }
-    return { ...fallback, goals };
+    return fallback;
   }
 
   const controller = new AbortController();
@@ -120,7 +136,7 @@ async function parseDoctorNoteWithLLM(noteText: string): Promise<ParsedInstructi
         headers: { "Content-Type": "application/json" },
         signal: controller.signal,
         body: JSON.stringify({
-          model: "llama3",
+          model: process.env.OLLAMA_MODEL || "llama3.2",
           stream: false,
           messages: [
             { role: "system", content: DOCTOR_NOTE_SYSTEM_PROMPT },
@@ -138,13 +154,13 @@ async function parseDoctorNoteWithLLM(noteText: string): Promise<ParsedInstructi
 
     if (!rawText) return fallback;
 
-    // Strip markdown code fences if present
-    const cleaned = rawText.replace(/```(?:json)?/gi, "").replace(/```/g, "").trim();
-    const parsed = JSON.parse(cleaned);
+    const parsed = extractJsonObject(rawText);
+    if (!parsed) return fallback;
+
     return {
-      reminders: Array.isArray(parsed.reminders) ? parsed.reminders : [],
-      goals: Array.isArray(parsed.goals) ? parsed.goals : [],
-      followUpDate: parsed.followUpDate || null,
+      reminders: Array.isArray(parsed.reminders) ? (parsed.reminders as ParsedReminder[]) : [],
+      goals: Array.isArray(parsed.goals) ? (parsed.goals as ParsedGoal[]) : fallback.goals,
+      followUpDate: typeof parsed.followUpDate === "string" ? parsed.followUpDate : null,
     };
   } catch {
     clearTimeout(timeoutId);
@@ -231,10 +247,8 @@ export async function POST(
       noteId: savedNote.id,
       parsedInstructions,
     });
-  } catch (err: any) {
-    return NextResponse.json(
-      { error: err.message || "Failed to process doctor note" },
-      { status: 500 }
-    );
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : "Failed to process doctor note";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

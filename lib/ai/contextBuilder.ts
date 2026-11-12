@@ -1,5 +1,6 @@
 import { store } from "@/lib/supabase/localStore";
 import { MOCK_PATIENT_DETAILS } from "@/lib/mockData";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { buildWearableContext } from "@/lib/wearable/processor";
 import { AnomalyFlag, PatientDetail, WearableContext } from "@/lib/types";
 
@@ -54,7 +55,7 @@ export interface BriefContext {
 
 export async function buildBriefContext(
   patientId: string,
-  supabase?: any
+  supabase?: SupabaseClient | null
 ): Promise<{ context: BriefContext; wearable: WearableContext; detail: PatientDetail }> {
   let detail = store.getPatientDetail(patientId);
   if (!detail) {
@@ -63,7 +64,7 @@ export async function buildBriefContext(
     detail = fallback as PatientDetail;
   }
 
-  const wearable = await buildWearableContext(patientId, supabase);
+  const wearable = await buildWearableContext(patientId, supabase, detail.vitals);
 
   // Calculate adherence & streak
   const now = Date.now();
@@ -101,8 +102,14 @@ export async function buildBriefContext(
       formattedValue = `${valA}/${valB || 80} mmHg`;
     } else if (v.type === "hr") {
       formattedValue = `${valA} bpm`;
+    } else if (v.type === "spo2") {
+      formattedValue = `${valA}% SpO2`;
     } else if (v.type === "steps") {
       formattedValue = `${valA} steps`;
+    } else if (v.type === "calories") {
+      formattedValue = `${valA} kcal`;
+    } else if (v.type === "sleep") {
+      formattedValue = `${valA} hrs`;
     } else if (v.type === "glucose") {
       formattedValue = `${valA} mg/dL`;
     }

@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { store } from "@/lib/supabase/localStore";
-import { createClient } from "@/lib/supabase/server";
+import { completeGoalDb } from "@/lib/supabase/db";
 
 export const dynamic = "force-dynamic";
 
@@ -16,32 +15,10 @@ export async function POST(
       return NextResponse.json({ error: "Goal ID is required" }, { status: 400 });
     }
 
-    const completedAt = new Date().toISOString();
-
-    // 1. Update in local store
-    const localResult = store.completePatientGoal(patientId, goalId);
-
-    // 2. Update in Supabase if online
-    try {
-      const supabase = await createClient();
-      if (supabase && typeof supabase.from === "function") {
-        await supabase
-          .from("patient_goals")
-          .update({ completed_at: completedAt })
-          .eq("id", goalId)
-          .eq("patient_id", patientId);
-      }
-    } catch {
-      // Local mode
-    }
-
-    return NextResponse.json({
-      completedAt: localResult?.completedAt || completedAt,
-    });
-  } catch (err: any) {
-    return NextResponse.json(
-      { error: err.message || "Failed to mark goal complete" },
-      { status: 500 }
-    );
+    const res = await completeGoalDb(patientId, goalId);
+    return NextResponse.json(res);
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : "Failed to mark goal complete";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

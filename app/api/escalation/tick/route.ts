@@ -15,12 +15,10 @@ export async function POST(request: NextRequest) {
       // Body is optional
     }
 
-    const result = tickEscalation(forceStage);
+    const result = await tickEscalation(forceStage);
     return NextResponse.json(result);
-  } catch (err: any) {
-    return NextResponse.json(
-      { error: err.message || "Failed to process escalation tick" },
-      { status: 500 }
-    );
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : "Failed to process escalation tick";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

@@ -1,4 +1,4 @@
-import { PatientSnapshot, RiskReason } from "@/lib/types";
+import { PatientSnapshot } from "@/lib/types";
 
 export interface RiskRuleConfig {
   id: string;
@@ -260,6 +260,66 @@ export const RISK_RULES: RiskRuleConfig[] = [
         return {
           hit: true,
           text: `No vitals or medication intake logged in over 48 hours.`,
+        };
+      }
+      return { hit: false };
+    },
+  },
+
+  // 9. Critical SpO2 Drop (< 92%)
+  {
+    id: "SPO2_CRITICAL",
+    label: "Low Blood Oxygen (SpO2)",
+    weight: 30,
+    evaluate: (snapshot) => {
+      const spo2Vitals = snapshot.vitals
+        .filter((v) => v.type === "spo2")
+        .sort((a, b) => getVitalTime(b) - getVitalTime(a));
+
+      if (spo2Vitals.length === 0) return { hit: false };
+      const latest = spo2Vitals[0];
+      const valA = getVitalValA(latest);
+
+      if (valA > 0 && valA < 92) {
+        return {
+          hit: true,
+          text: `Latest blood oxygen (SpO2) dropped to ${valA}% (safe range 95–100%). Immediate clinical review advised.`,
+        };
+      }
+      return { hit: false };
+    },
+  },
+
+  // 10. Nocturnal Heart Rate Elevation (> 100 bpm)
+  {
+    id: "HR_NOCTURNAL_HIGH",
+    label: "Elevated Nocturnal Heart Rate",
+    weight: 15,
+    evaluate: (snapshot) => {
+      const hrVitals = snapshot.vitals
+        .filter((v) => v.type === "hr")
+        .sort((a, b) => getVitalTime(b) - getVitalTime(a));
+
+      if (hrVitals.length === 0) return { hit: false };
+
+      const nocturnal = hrVitals.filter((v) => {
+        const d = new Date(getVitalTime(v));
+        const h = d.getHours();
+        const utcH = d.getUTCHours();
+        return h >= 23 || h < 5 || utcH >= 23 || utcH < 5;
+      });
+
+      const recentSet = (nocturnal.length > 0 ? nocturnal : hrVitals).slice(0, 3);
+      const avgHr = Math.round(
+        recentSet.reduce((sum, v) => sum + getVitalValA(v), 0) / recentSet.length
+      );
+      const latestHr = getVitalValA(hrVitals[0]);
+
+      if (avgHr > 100 || latestHr > 100) {
+        const displayHr = Math.max(avgHr, latestHr);
+        return {
+          hit: true,
+          text: `Resting/nocturnal heart rate elevated at ${displayHr} bpm (threshold 100 bpm).`,
         };
       }
       return { hit: false };

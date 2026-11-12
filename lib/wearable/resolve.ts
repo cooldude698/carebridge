@@ -12,55 +12,60 @@ export function resolveWearableContext(
       patientId,
       windowDays: 14,
       heartRate: {
-        mean: 78,
-        nocturnalMean: 104, // > 100 bpm nocturnal spike
-        max: 124,
+        mean: 74,
+        nocturnalMean: 72,
+        max: 96,
         readings: [],
       },
       bloodPressure: {
-        latestSystolic: 155,
-        latestDiastolic: 95,
-        avgSystolic7d: 146,
-        prevAvgSystolic7d: 132,
+        latestSystolic: 140,
+        latestDiastolic: 88,
+        avgSystolic7d: 140,
+        prevAvgSystolic7d: 127,
         trend: "rising",
       },
       steps: {
-        dailyMean: 2120,
-        baseline14d: 4850,
-        pctChangeFromBaseline: -56.3, // > -30% frailty drop
+        dailyMean: 2800,
+        baseline14d: 5400,
+        pctChangeFromBaseline: -48,
       },
       glucose: {
-        latestFasting: 184, // >= 180 fasting spike
-        mean: 168,
+        latestFasting: 155,
+        mean: 144,
+      },
+      spo2: {
+        latest: 97,
+        min24h: 96,
+        readings: [],
+      },
+      calories: {
+        dailyMean: 325,
+        latest: 310,
+      },
+      sleep: {
+        lastNightHours: 6.8,
+        avg7dHours: 6.7,
       },
       anomalyFlags: [
         {
-          ruleId: "HR_NOCTURNAL_HIGH",
-          severity: "HIGH",
-          title: "Elevated Nocturnal Heart Rate",
-          detail: "Mean nocturnal HR 104 bpm between 23:00–05:00 (threshold: 100 bpm).",
-          readingId: "v-hr-spike-01",
+          ruleId: "STEPS_DECLINE",
+          severity: "MEDIUM",
+          title: "Activity decline",
+          detail: "Daily steps down 48% from 14-day baseline (2,800 vs 5,400).",
+          readingId: "p1-steps-1",
         },
         {
-          ruleId: "STEPS_FRAILTY_DROP",
-          severity: "HIGH",
-          title: "Critical Step Count Drop",
-          detail: "Daily steps down 56.3% from 14-day baseline (threshold: > 30% drop).",
-          readingId: "v-step-drop-02",
-        },
-        {
-          ruleId: "GLUCOSE_FASTING_SPIKE",
-          severity: "HIGH",
-          title: "Fasting Blood Glucose Spike",
-          detail: "Fasting glucose reading 184 mg/dL exceeds safety threshold (180 mg/dL).",
-          readingId: "v-glu-spike-03",
+          ruleId: "BP_TREND_UP",
+          severity: "MEDIUM",
+          title: "Blood pressure trending up",
+          detail: "Avg systolic up +10% vs prior 7 days (140 vs 127 mmHg).",
+          readingId: "p1-bp-1",
         },
       ],
-      lastUpdated: "Today, 06:30 AM",
+      lastUpdated: new Date().toISOString(),
     };
   }
 
-  // Baseline stable wearable context
   return {
     patientId,
     windowDays: 14,
@@ -86,7 +91,20 @@ export function resolveWearableContext(
       latestFasting: 108,
       mean: 114,
     },
+    spo2: {
+      latest: 98,
+      min24h: 97,
+      readings: [],
+    },
+    calories: {
+      dailyMean: 390,
+      latest: 410,
+    },
+    sleep: {
+      lastNightHours: 7.2,
+      avg7dHours: 7.1,
+    },
     anomalyFlags: [],
-    lastUpdated: "Today, 07:00 AM",
+    lastUpdated: new Date().toISOString(),
   };
 }

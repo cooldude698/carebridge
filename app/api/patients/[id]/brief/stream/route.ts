@@ -1,3 +1,4 @@
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { NextRequest } from "next/server";
 import { buildBriefContext, parseBriefOutput } from "@/lib/ai/contextBuilder";
 import { BRIEF_SYSTEM_PROMPT } from "@/lib/ai/brief";
@@ -13,7 +14,7 @@ export async function GET(
   const params = await context.params;
   const patientId = params.id;
 
-  let supabase: any = null;
+  let supabase: SupabaseClient | null = null;
   try {
     supabase = await createClient();
   } catch {
@@ -30,8 +31,41 @@ export async function GET(
 
   const stream = new ReadableStream({
     async start(controller) {
-      const sendEvent = (data: any) => {
-        controller.enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`));
+      let streamClosed = false;
+
+      const sendEvent = (data: Record<string, unknown>) => {
+        if (streamClosed) return;
+        try {
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`));
+        } catch {
+          streamClosed = true;
+        }
+      };
+
+      const safeClose = () => {
+        if (streamClosed) return;
+        streamClosed = true;
+        try {
+          controller.close();
+        } catch {
+          // already closed
+        }
+      };
+
+      const emitFallbackStream = async () => {
+        const words = fallbackText.split(" ");
+        for (let i = 0; i < words.length && !streamClosed; i++) {
+          const token = i === words.length - 1 ? words[i] : words[i] + " ";
+          sendEvent({ type: "token", delta: token });
+          await new Promise((r) => setTimeout(r, 18));
+        }
+        sendEvent({
+          type: "done",
+          text: fallbackText,
+          citations: [],
+          source: "fallback",
+        });
+        safeClose();
       };
 
       const geminiApiKey = process.env.GEMINI_API_KEY;
@@ -40,35 +74,25 @@ export async function GET(
 
       let tokensReceived = false;
       let accumulatedText = "";
+      const abortController = new AbortController();
 
       const timeout = setTimeout(() => {
-        if (!tokensReceived) {
+        abortController.abort();
+        if (!tokensReceived && !streamClosed) {
           sendEvent({
             type: "done",
             text: fallbackText,
             citations: [],
             source: "fallback",
           });
-          controller.close();
+          safeClose();
         }
       }, 4000);
 
       try {
         if (!geminiApiKey && !anthropicApiKey && !ollamaBaseUrl) {
           clearTimeout(timeout);
-          // Stream the fallback text smoothly in word tokens
-          const words = fallbackText.split(" ");
-          for (let i = 0; i < words.length; i++) {
-            const token = i === words.length - 1 ? words[i] : words[i] + " ";
-            sendEvent({ type: "token", delta: token });
-            await new Promise((r) => setTimeout(r, 25));
-          }
-          sendEvent({
-            type: "done",
-            citations: [],
-            source: "fallback",
-          });
-          controller.close();
+          await emitFallbackStream();
           return;
         }
 
@@ -78,6 +102,7 @@ export async function GET(
             {
               method: "POST",
               headers: { "Content-Type": "application/json" },
+              signal: abortController.signal,
               body: JSON.stringify({
                 contents: [
                   {
@@ -128,6 +153,7 @@ export async function GET(
               "x-api-key": anthropicApiKey,
               "anthropic-version": "2023-06-01",
             },
+            signal: abortController.signal,
             body: JSON.stringify({
               model: "claude-3-5-sonnet-20241022",
               max_tokens: 300,
@@ -165,11 +191,54 @@ export async function GET(
               }
             }
           }
+        } else if (ollamaBaseUrl) {
+          const res = await fetch(`${ollamaBaseUrl}/api/chat`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            signal: abortController.signal,
+            body: JSON.stringify({
+              model: process.env.OLLAMA_MODEL || "llama3.2",
+              stream: true,
+              messages: [
+                { role: "system", content: BRIEF_SYSTEM_PROMPT },
+                { role: "user", content: JSON.stringify(briefContext) },
+              ],
+            }),
+          });
+
+          if (!res.ok || !res.body) {
+            throw new Error("Ollama stream failed");
+          }
+
+          const reader = res.body.getReader();
+          const decoder = new TextDecoder();
+          let buffer = "";
+
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split("\n");
+            buffer = lines.pop() || "";
+
+            for (const line of lines) {
+              if (!line.trim()) continue;
+              try {
+                const parsed = JSON.parse(line);
+                const chunkText = parsed?.message?.content;
+                if (chunkText) {
+                  tokensReceived = true;
+                  accumulatedText += chunkText;
+                  sendEvent({ type: "token", delta: chunkText });
+                }
+              } catch {}
+            }
+          }
         }
 
         clearTimeout(timeout);
 
-        if (accumulatedText) {
+        if (accumulatedText && !streamClosed) {
           if (!accumulatedText.includes("Doctor decides.")) {
             sendEvent({ type: "token", delta: " Doctor decides." });
             accumulatedText += " Doctor decides.";
@@ -191,20 +260,17 @@ export async function GET(
             citations,
             source: "llm",
           });
-        } else {
-          sendEvent({
-            type: "done",
-            text: fallbackText,
-            citations: [],
-            source: "fallback",
-          });
+          safeClose();
+        } else if (!streamClosed) {
+          await emitFallbackStream();
         }
-
-        controller.close();
       } catch {
         clearTimeout(timeout);
-        sendEvent({ type: "error", message: "Brief unavailable" });
-        controller.close();
+        if (!tokensReceived && !streamClosed) {
+          await emitFallbackStream();
+        } else {
+          safeClose();
+        }
       }
     },
   });

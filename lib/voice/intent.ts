@@ -1,11 +1,22 @@
 // lib/voice/intent.ts
-// Deterministic keyword and pattern voice intent parser (no LLM, 0ms latency)
+// Deterministic zero-latency voice intent parser + natural language routing to local LLM
 // Supports English (en-IN), Hindi (hi-IN), and Kannada (kn-IN)
 
-export type VoiceIntentType = 'LOG_MED_TAKEN' | 'LOG_BP' | 'UNKNOWN';
+export type VoiceIntentType =
+  | 'LOG_MED_TAKEN'
+  | 'LOG_BP'
+  | 'ASK_AI_HEALTH_QUERY'
+  | 'UNKNOWN';
+
+export interface ActiveMedicineOption {
+  id: string;
+  name: string;
+  dose?: string;
+}
 
 export interface MedTakenIntent {
   type: 'LOG_MED_TAKEN';
+  medicineId?: string;
   medicineName?: string;
   confidence: number;
   rawText: string;
@@ -20,14 +31,23 @@ export interface BpIntent {
   rawText: string;
 }
 
+export interface AskAiHealthQueryIntent {
+  type: 'ASK_AI_HEALTH_QUERY';
+  question: string;
+  rawText: string;
+}
+
 export interface UnknownIntent {
   type: 'UNKNOWN';
   rawText: string;
 }
 
-export type VoiceIntent = MedTakenIntent | BpIntent | UnknownIntent;
+export type VoiceIntent =
+  | MedTakenIntent
+  | BpIntent
+  | AskAiHealthQueryIntent
+  | UnknownIntent;
 
-// Keywords for medicine logging
 const MED_KEYWORDS = [
   // Hindi
   'maine dawai le li',
@@ -44,8 +64,10 @@ const MED_KEYWORDS = [
   'maine goli le li',
   'dawai khayi',
   'maine dawa kha li',
-  'le li',
-  'kha li',
+  'मैंने दवाई ले ली',
+  'दवाई ले ली',
+  'दवा ले ली',
+  'गोली खा ली',
 
   // Kannada
   'medicine tiskondidini',
@@ -54,8 +76,8 @@ const MED_KEYWORDS = [
   'tablet togonde',
   'goli togondidini',
   'mathre togonde',
-  'togondidini',
-  'togonde',
+  'ಔಷಧಿ ತಗೊಂಡೆ',
+  'ಮಾತ್ರೆ ತಗೊಂಡೆ',
 
   // English
   'took my medicine',
@@ -68,34 +90,52 @@ const MED_KEYWORDS = [
   'took my dose',
   'dose taken',
   'logged meds',
+  'mark medicine taken',
 ];
 
-// Specific known medicine names
-const KNOWN_MEDICINES = ['metformin', 'telmisartan', 'atorvastatin', 'aspirin', 'insulin'];
+const FALLBACK_KNOWN_MEDS = [
+  'metformin',
+  'amlodipine',
+  'telmisartan',
+  'atorvastatin',
+  'salbutamol',
+  'aspirin',
+  'insulin',
+];
 
-export function parseVoiceIntent(rawText: string): VoiceIntent {
-  const text = rawText.trim().toLowerCase();
+export function parseVoiceIntent(
+  rawText: string,
+  activeMedicines?: ActiveMedicineOption[]
+): VoiceIntent {
+  const trimmed = rawText.trim();
+  const text = trimmed.toLowerCase();
   if (!text) {
     return { type: 'UNKNOWN', rawText };
   }
 
-  // 1. Check for Blood Pressure Intent
-  // Match patterns like: "BP 130 by 85", "BP 130/85", "130 over 85", "बीपी 130 और 85", "130 aur 85"
+  // 1. Check for Blood Pressure Logging Intent (only when clearly a BP measurement)
   const bpKeywords = ['bp', 'blood pressure', 'pressure', 'बीपी', 'रक्तचाप', 'ರಕ್ತದೊತ್ತಡ'];
   const hasBpKeyword = bpKeywords.some((k) => text.includes(k));
-
-  // Extract two distinct numbers typically in BP ranges
-  // Matches: 130 by 85, 130/85, 130 over 85, 130 aur 85, 130 85
-  const bpRegex = /(?:bp|pressure|बीपी)?\s*(\d{2,3})\s*(?:by|over|\/|aur|and|और|ಮತ್ತು|\-|\s+)\s*(\d{2,3})/i;
+  const bpRegex =
+    /(?:bp|blood pressure|pressure|बीपी|रक्तचाप)?\s*(\d{2,3})\s*(?:by|over|\/|aur|and|और|ಮತ್ತು|-|\s+)\s*(\d{2,3})/i;
   const bpMatch = text.match(bpRegex);
 
-  if (bpMatch) {
+  // Guard against questions like "is 140/90 normal?" being treated as logging unless imperative or short phrase
+  const looksLikeQuestion =
+    text.includes('?') ||
+    text.startsWith('can i') ||
+    text.startsWith('is ') ||
+    text.startsWith('what ') ||
+    text.startsWith('how ') ||
+    text.startsWith('why ') ||
+    text.startsWith('does ') ||
+    text.startsWith('should ');
+
+  if (bpMatch && !looksLikeQuestion) {
     const num1 = parseInt(bpMatch[1], 10);
     const num2 = parseInt(bpMatch[2], 10);
 
-    // Normal or plausible human BP ranges: systolic 70-260, diastolic 40-160
-    if (num1 >= 70 && num1 <= 260 && num2 >= 40 && num2 <= 160) {
-      // Optional pulse check: "pulse 72" or "heart rate 75"
+    if (num1 >= 70 && num1 <= 260 && num2 >= 40 && num2 <= 160 && num1 > num2) {
       const pulseMatch = text.match(/(?:pulse|heart rate|पल्स)\s*(\d{2,3})/i);
       const pulse = pulseMatch ? parseInt(pulseMatch[1], 10) : undefined;
 
@@ -110,22 +150,38 @@ export function parseVoiceIntent(rawText: string): VoiceIntent {
     }
   }
 
-  // 2. Check for Medicine Log Intent
+  // 2. Check for Medicine Taken Logging Intent (and resolve real active medicine ID)
   const matchedKeyword = MED_KEYWORDS.find((k) => text.includes(k));
-  const mentionedMed = KNOWN_MEDICINES.find((m) => text.includes(m));
+  const matchedActive = activeMedicines?.find((m) =>
+    text.includes(m.name.toLowerCase())
+  );
+  const mentionedFallback = FALLBACK_KNOWN_MEDS.find((m) => text.includes(m));
+  const hasTakeVerb =
+    text.includes('took') ||
+    text.includes('taken') ||
+    text.includes('le li') ||
+    text.includes('kha li') ||
+    text.includes('togonde');
 
-  if (matchedKeyword || (mentionedMed && (text.includes('took') || text.includes('le li') || text.includes('togonde')))) {
+  if (!looksLikeQuestion && (matchedKeyword || (matchedActive && hasTakeVerb) || (mentionedFallback && hasTakeVerb))) {
+    const resolvedMed = matchedActive || activeMedicines?.[0];
     return {
       type: 'LOG_MED_TAKEN',
-      medicineName: mentionedMed ? capitalize(mentionedMed) : undefined,
-      confidence: matchedKeyword ? 0.95 : 0.8,
+      medicineId: resolvedMed?.id,
+      medicineName: resolvedMed
+        ? `${resolvedMed.name}${resolvedMed.dose ? ` ${resolvedMed.dose}` : ''}`
+        : mentionedFallback
+        ? capitalize(mentionedFallback)
+        : undefined,
+      confidence: matchedKeyword ? 0.95 : 0.82,
       rawText,
     };
   }
 
-  // Fallback
+  // 3. Route ALL natural language food, vitamin, nutrition, sugar, cholesterol, or symptom queries to Local LLM
   return {
-    type: 'UNKNOWN',
+    type: 'ASK_AI_HEALTH_QUERY',
+    question: trimmed,
     rawText,
   };
 }

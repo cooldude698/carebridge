@@ -1,9 +1,8 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useSyncExternalStore } from 'react';
 import { Locale } from '@/lib/i18n';
 
-// Type definitions for Web Speech API
 interface SpeechRecognitionEventLike {
   resultIndex: number;
   results: {
@@ -42,9 +41,121 @@ declare global {
   }
 }
 
+export function getBcp47Locale(loc: Locale): string {
+  switch (loc) {
+    case 'hi':
+      return 'hi-IN';
+    case 'kn':
+      return 'kn-IN';
+    case 'en':
+    default:
+      return 'en-IN';
+  }
+}
+
+export function stopSpeaking(): void {
+  if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
+  try {
+    window.speechSynthesis.cancel();
+  } catch {
+    // ignore browser synthesis errors
+  }
+}
+
+export function speakResponse(
+  text: string,
+  locale: Locale = 'en',
+  callbacks?: { onStart?: () => void; onEnd?: () => void }
+): boolean {
+  if (typeof window === 'undefined' || !('speechSynthesis' in window) || !text.trim()) {
+    return false;
+  }
+
+  try {
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(text);
+    const targetLang = getBcp47Locale(locale);
+    utterance.lang = targetLang;
+    utterance.rate = 0.95;
+    utterance.pitch = 1.0;
+
+    const voices = window.speechSynthesis.getVoices();
+    if (voices && voices.length > 0) {
+      const langPrefix = targetLang.split('-')[0].toLowerCase();
+      const matchedVoice =
+        voices.find((v) => v.lang.toLowerCase() === targetLang.toLowerCase()) ||
+        voices.find((v) => v.lang.toLowerCase().startsWith(langPrefix));
+      if (matchedVoice) {
+        utterance.voice = matchedVoice;
+      }
+    }
+
+    utterance.onstart = () => {
+      callbacks?.onStart?.();
+    };
+    utterance.onend = () => {
+      callbacks?.onEnd?.();
+    };
+    utterance.onerror = () => {
+      callbacks?.onEnd?.();
+    };
+
+    window.speechSynthesis.speak(utterance);
+    return true;
+  } catch {
+    callbacks?.onEnd?.();
+    return false;
+  }
+}
+
+export function useSpeechSynthesis() {
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const [speakingId, setSpeakingId] = useState<string | null>(null);
+
+  const speak = useCallback((text: string, locale: Locale = 'en', id?: string) => {
+    const ok = speakResponse(text, locale, {
+      onStart: () => {
+        setIsSpeaking(true);
+        setSpeakingId(id || 'active');
+      },
+      onEnd: () => {
+        setIsSpeaking(false);
+        setSpeakingId(null);
+      },
+    });
+    if (!ok) {
+      setIsSpeaking(false);
+      setSpeakingId(null);
+    }
+  }, []);
+
+  const stop = useCallback(() => {
+    stopSpeaking();
+    setIsSpeaking(false);
+    setSpeakingId(null);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      stopSpeaking();
+    };
+  }, []);
+
+  return { isSpeaking, speakingId, speak, stop };
+}
+
 export interface UseSpeechOptions {
   locale?: Locale;
   onFinalTranscript?: (transcript: string) => void;
+}
+
+function subscribeNoop() {
+  return () => {};
+}
+
+function getSpeechSupportSnapshot(): boolean {
+  if (typeof window === 'undefined') return false;
+  return Boolean(window.SpeechRecognition || window.webkitSpeechRecognition);
 }
 
 export function useSpeech({ locale = 'en', onFinalTranscript }: UseSpeechOptions = {}) {
@@ -52,22 +163,18 @@ export function useSpeech({ locale = 'en', onFinalTranscript }: UseSpeechOptions
   const [transcript, setTranscript] = useState('');
   const [interimTranscript, setInterimTranscript] = useState('');
   const [error, setError] = useState<string | null>(null);
-  const [isSupported, setIsSupported] = useState(false);
+  const isSupported = useSyncExternalStore(
+    subscribeNoop,
+    getSpeechSupportSnapshot,
+    () => false
+  );
 
   const recognitionRef = useRef<SpeechRecognitionInstance | null>(null);
+  const onFinalRef = useRef(onFinalTranscript);
 
-  // Map app locale to BCP 47 language code for Web Speech API
-  const getLanguageTag = useCallback((loc: Locale): string => {
-    switch (loc) {
-      case 'hi':
-        return 'hi-IN';
-      case 'kn':
-        return 'kn-IN';
-      case 'en':
-      default:
-        return 'en-IN';
-    }
-  }, []);
+  useEffect(() => {
+    onFinalRef.current = onFinalTranscript;
+  }, [onFinalTranscript]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -76,17 +183,15 @@ export function useSpeech({ locale = 'en', onFinalTranscript }: UseSpeechOptions
       window.SpeechRecognition || window.webkitSpeechRecognition;
 
     if (!SpeechRecognition) {
-      setIsSupported(false);
+      recognitionRef.current = null;
       return;
     }
 
-    setIsSupported(true);
-
     try {
       const recognition = new SpeechRecognition();
-      recognition.continuous = false; // Stop automatically after single command
+      recognition.continuous = false;
       recognition.interimResults = true;
-      recognition.lang = getLanguageTag(locale);
+      recognition.lang = getBcp47Locale(locale);
 
       recognition.onstart = () => {
         setIsListening(true);
@@ -114,14 +219,11 @@ export function useSpeech({ locale = 'en', onFinalTranscript }: UseSpeechOptions
         if (finalChunk) {
           setTranscript(finalChunk);
           setInterimTranscript('');
-          if (onFinalTranscript) {
-            onFinalTranscript(finalChunk);
-          }
+          onFinalRef.current?.(finalChunk);
         }
       };
 
       recognition.onerror = (event: SpeechRecognitionErrorEventLike) => {
-        // 'no-speech' is a soft event when user doesn't speak
         if (event.error !== 'no-speech') {
           setError(event.error || 'Speech recognition error');
         }
@@ -134,7 +236,7 @@ export function useSpeech({ locale = 'en', onFinalTranscript }: UseSpeechOptions
 
       recognitionRef.current = recognition;
     } catch {
-      setIsSupported(false);
+      recognitionRef.current = null;
     }
 
     return () => {
@@ -146,7 +248,7 @@ export function useSpeech({ locale = 'en', onFinalTranscript }: UseSpeechOptions
         }
       }
     };
-  }, [locale, getLanguageTag, onFinalTranscript]);
+  }, [locale]);
 
   const startListening = useCallback(
     (customLocale?: Locale) => {
@@ -156,18 +258,13 @@ export function useSpeech({ locale = 'en', onFinalTranscript }: UseSpeechOptions
       setInterimTranscript('');
 
       try {
-        if (customLocale) {
-          recognitionRef.current.lang = getLanguageTag(customLocale);
-        } else {
-          recognitionRef.current.lang = getLanguageTag(locale);
-        }
+        recognitionRef.current.lang = getBcp47Locale(customLocale || locale);
         recognitionRef.current.start();
-      } catch (err) {
-        // Recognition might already be running
-        console.warn('Speech recognition start warning:', err);
+      } catch {
+        // Ignore if recognition is already running
       }
     },
-    [getLanguageTag, locale]
+    [locale]
   );
 
   const stopListening = useCallback(() => {

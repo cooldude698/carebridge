@@ -3,7 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, Pill, Mic, Activity, Users } from 'lucide-react';
+import { Home, Pill, Mic, Activity, FileText } from 'lucide-react';
 import { Locale, t } from '@/lib/i18n';
 
 export interface BottomNavProps {
@@ -36,15 +36,18 @@ export function BottomNav({ locale = 'en' }: BottomNavProps) {
       icon: Activity,
     },
     {
-      href: '/family',
-      label: t('nav_family', locale),
-      icon: Users,
+      href: '/patient/reports',
+      label: t('nav_reports', locale),
+      icon: FileText,
     },
   ];
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 md:left-1/2 md:-translate-x-1/2 md:max-w-md z-50 bg-white border-t-2 md:border-x-2 border-ink-900 shadow-[0px_-2px_0px_#121214] h-[68px] pb-1 select-none">
-      <div className="w-full h-full px-2 flex items-center justify-around">
+    <nav
+      aria-label="Patient portal navigation"
+      className="fixed bottom-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-md border-t border-[#E2E8F0] shadow-[0_-4px_20px_rgba(15,23,42,0.05)] select-none"
+    >
+      <div className="max-w-3xl mx-auto h-[72px] px-2 sm:px-6 flex items-center justify-around">
         {navItems.map((item) => {
           const isActive = pathname === item.href;
           const Icon = item.icon;
@@ -54,16 +57,20 @@ export function BottomNav({ locale = 'en' }: BottomNavProps) {
               <Link
                 key={item.href}
                 href={item.href}
-                className="flex flex-col items-center justify-center -mt-5 group"
+                className="flex flex-col items-center justify-center -mt-4 group min-w-[64px]"
               >
                 <div
-                  className={`w-12 h-12 rounded-full bg-[#FF5C98] border-2 border-ink-900 flex items-center justify-center shadow-[2px_2px_0px_#121214] group-active:translate-y-0.5 group-hover:scale-105 transition-all ${
-                    isActive ? 'ring-2 ring-ink-900 ring-offset-2' : ''
+                  className={`w-12 h-12 rounded-full bg-[#0D9488] hover:bg-[#0F766E] text-white flex items-center justify-center shadow-[0_6px_16px_rgba(13,148,136,0.32)] transition-all ${
+                    isActive ? 'ring-4 ring-[#CCFBF1]' : ''
                   }`}
                 >
-                  <Icon className="w-6 h-6 text-white stroke-[2.5]" />
+                  <Icon className="w-5 h-5" />
                 </div>
-                <span className="font-body text-[11px] font-bold text-ink-900 mt-1 tracking-tight">
+                <span
+                  className={`text-[11px] mt-1 tracking-tight ${
+                    isActive ? 'font-semibold text-[#0F766E]' : 'font-medium text-[#475569]'
+                  }`}
+                >
                   {item.label}
                 </span>
               </Link>
@@ -74,26 +81,22 @@ export function BottomNav({ locale = 'en' }: BottomNavProps) {
             <Link
               key={item.href}
               href={item.href}
-              className={`flex flex-col items-center justify-center min-h-[44px] min-w-[52px] px-1 py-1 rounded-xl transition-all ${
-                isActive ? 'text-ink-900' : 'text-ink-500 hover:text-ink-900'
+              className={`flex flex-col items-center justify-center min-h-[48px] min-w-[56px] px-2 py-1 rounded-xl transition-colors ${
+                isActive
+                  ? 'text-[#0D9488]'
+                  : 'text-[#64748B] hover:text-[#0F172A] hover:bg-[#F8FAFC]'
               }`}
             >
               <div
-                className={`w-7 h-7 rounded-full flex items-center justify-center transition-all ${
-                  isActive
-                    ? 'bg-[#D4F77C] border border-ink-900 shadow-[1px_1px_0px_#121214]'
-                    : ''
+                className={`w-8 h-7 rounded-full flex items-center justify-center transition-colors ${
+                  isActive ? 'bg-[#F0FDFA] text-[#0D9488]' : ''
                 }`}
               >
-                <Icon
-                  className={`w-4 h-4 ${
-                    isActive ? 'text-ink-900 stroke-[2.5]' : 'text-ink-500 stroke-[2]'
-                  }`}
-                />
+                <Icon className="w-[18px] h-[18px]" />
               </div>
               <span
-                className={`font-body text-[10px] tracking-tight mt-0.5 ${
-                  isActive ? 'font-bold text-ink-900' : 'font-medium text-ink-500'
+                className={`text-[11px] tracking-tight mt-0.5 ${
+                  isActive ? 'font-semibold text-[#0F766E]' : 'font-medium text-[#64748B]'
                 }`}
               >
                 {item.label}

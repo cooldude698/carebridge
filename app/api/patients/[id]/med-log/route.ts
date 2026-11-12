@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { store } from "@/lib/supabase/localStore";
+import { logMedicineDb, normalizePatientId } from "@/lib/supabase/db";
 
 export const dynamic = "force-dynamic";
 
@@ -9,8 +9,7 @@ export async function POST(
 ) {
   try {
     const params = await context.params;
-    const rawId = params.id;
-    const patientId = rawId === "patient-ramesh" ? "p1" : rawId;
+    const patientId = normalizePatientId(params.id);
     const body = await request.json();
     const { medicineId, status } = body;
 
@@ -21,32 +20,15 @@ export async function POST(
       );
     }
 
-    try {
-      const result = store.logMedicine(patientId, medicineId, status);
-      return NextResponse.json({
-        success: true,
-        log: result.log,
-        risk: result.risk,
-      });
-    } catch {
-      // Fallback response for unseeded patient ids
-      const logEntry = {
-        id: `log-${Date.now()}`,
-        patientId: rawId,
-        medicineId,
-        scheduledAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        takenAt: status === 'taken' ? new Date().toISOString() : null,
-        status,
-      };
-      return NextResponse.json({
-        success: true,
-        log: logEntry,
-      });
-    }
-  } catch (err: any) {
-    return NextResponse.json(
-      { error: err.message || "Failed to log medication" },
-      { status: 500 }
-    );
+    const result = await logMedicineDb(patientId, medicineId, status);
+    return NextResponse.json({
+      success: true,
+      log: result.log,
+      risk: result.risk,
+      compliancePct: result.compliancePct,
+    });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : "Failed to log medication";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

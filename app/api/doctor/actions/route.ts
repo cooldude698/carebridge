@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { store } from "@/lib/supabase/localStore";
+import { recordDoctorActionDb } from "@/lib/supabase/db";
 
 export const dynamic = "force-dynamic";
 
@@ -15,12 +15,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const response = store.recordDoctorAction(patientId, type, note);
+    const response = await recordDoctorActionDb(patientId, type, note);
     return NextResponse.json(response);
-  } catch (err: any) {
-    return NextResponse.json(
-      { error: err.message || "Failed to process doctor action" },
-      { status: 500 }
-    );
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : "Failed to process doctor action";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

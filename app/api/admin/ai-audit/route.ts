@@ -17,7 +17,15 @@ export async function GET() {
           .limit(50);
 
         if (!error && Array.isArray(data) && data.length > 0) {
-          const formatted = data.map((b: any) => ({
+          const rows = data as Array<{
+            id: string;
+            created_at: string;
+            source: string;
+            text?: string | null;
+            citations?: unknown[] | null;
+            patients?: { name?: string } | null;
+          }>;
+          const formatted = rows.map((b) => ({
             id: b.id,
             patient_name: b.patients?.name || "Patient",
             created_at: b.created_at,
@@ -37,10 +45,8 @@ export async function GET() {
     // 2. Local store fallback
     const localAudits = store.getAIAuditLogs();
     return NextResponse.json(localAudits);
-  } catch (err: any) {
-    return NextResponse.json(
-      { error: err.message || "Failed to fetch AI audit trail" },
-      { status: 500 }
-    );
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : "Failed to fetch AI audit trail";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

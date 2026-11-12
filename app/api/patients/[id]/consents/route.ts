@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { store } from "@/lib/supabase/localStore";
+import { getConsentsDb, updateConsentDb } from "@/lib/supabase/db";
 import { INITIAL_CONSENTS } from "@/lib/mockData";
+import { ConsentCategory } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
@@ -10,8 +11,7 @@ export async function GET(
 ) {
   try {
     const params = await context.params;
-    const patientId = params.id;
-    const consents = store.getConsents(patientId);
+    const consents = await getConsentsDb(params.id);
     if (consents && consents.length > 0) {
       return NextResponse.json(consents);
     }
@@ -27,18 +27,21 @@ export async function PUT(
 ) {
   try {
     const params = await context.params;
-    const patientId = params.id;
     const body = await request.json();
     const { category, granted } = body;
 
-    if (!category || typeof granted !== "boolean") {
+    if (
+      !category ||
+      !["vitals", "medicines", "steps", "glucose"].includes(category) ||
+      typeof granted !== "boolean"
+    ) {
       return NextResponse.json(
-        { error: "category and boolean granted are required" },
+        { error: "Valid category and boolean granted are required" },
         { status: 400 }
       );
     }
 
-    const updated = store.updateConsent(patientId, category, granted);
+    const updated = await updateConsentDb(params.id, category as ConsentCategory, granted);
     return NextResponse.json(updated);
   } catch {
     return NextResponse.json({ error: "Failed to update consent" }, { status: 500 });

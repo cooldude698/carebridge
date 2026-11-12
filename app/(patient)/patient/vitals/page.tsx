@@ -1,44 +1,81 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { Heart, Activity, CheckCircle2, History } from 'lucide-react';
-import { Card, Button } from '@/components/ui';
+import React, { Suspense, useState, useEffect, useCallback } from 'react';
+import { useSearchParams } from 'next/navigation';
+import {
+  Activity,
+  Droplets,
+  Footprints,
+  Heart,
+  History,
+  Loader2,
+  Moon,
+  Wind,
+} from 'lucide-react';
+import {
+  ResponsiveContainer,
+  AreaChart,
+  Area,
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ReferenceLine,
+} from 'recharts';
 import { PatientHeader } from '@/components/patient/PatientHeader';
 import { BottomNav } from '@/components/patient/BottomNav';
-import { Locale, t } from '@/lib/i18n';
-import { HERO_PATIENT, INITIAL_VITALS } from '@/lib/mockData';
+import { PatientToast } from '@/components/patient/PatientToast';
+import { usePatientLocale } from '@/components/patient/usePatientLocale';
+import { t } from '@/lib/i18n';
 import { Vital } from '@/lib/types';
 
-export default function PatientVitalsPage() {
-  const [locale, setLocale] = useState<Locale>('hi');
-  const [systolic, setSystolic] = useState<string>('130');
-  const [diastolic, setDiastolic] = useState<string>('85');
-  const [pulse, setPulse] = useState<string>('72');
-  const [vitalsHistory, setVitalsHistory] = useState<Vital[]>(INITIAL_VITALS);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
+const PATIENT_ID = 'p1';
 
-  useEffect(() => {
+type VitalTab = 'spo2' | 'hr' | 'bp' | 'glucose' | 'steps' | 'sleep';
+const VALID_TABS = new Set<VitalTab>(['spo2', 'hr', 'bp', 'glucose', 'steps', 'sleep']);
+
+function VitalsContent() {
+  const searchParams = useSearchParams();
+  const { locale, changeLocale } = usePatientLocale('en');
+
+  const queryTab = searchParams.get('tab') as VitalTab | null;
+  const [selectedTab, setSelectedTab] = useState<VitalTab | null>(null);
+  const activeTab: VitalTab =
+    selectedTab ?? (queryTab && VALID_TABS.has(queryTab) ? queryTab : 'spo2');
+  const [vitals, setVitals] = useState<Vital[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const [systolic, setSystolic] = useState('136');
+  const [diastolic, setDiastolic] = useState('86');
+  const [pulse, setPulse] = useState('72');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [toast, setToast] = useState<string | null>(null);
+
+  const showToast = (msg: string) => {
+    setToast(msg);
+    setTimeout(() => setToast(null), 3200);
+  };
+
+  const fetchVitals = useCallback(async () => {
     try {
-      const savedLocale = localStorage.getItem('carebridge_locale') as Locale;
-      if (savedLocale && ['en', 'hi', 'kn'].includes(savedLocale)) {
-        setLocale(savedLocale);
+      const res = await fetch(`/api/patients/${PATIENT_ID}/vitals?type=all`, {
+        cache: 'no-store',
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setVitals(Array.isArray(data?.vitals) ? data.vitals : []);
       }
-    } catch {
-      // ignore
+    } finally {
+      setLoading(false);
     }
   }, []);
 
-  const handleLocaleChange = (newLocale: Locale) => {
-    setLocale(newLocale);
-    try {
-      localStorage.setItem('carebridge_locale', newLocale);
-    } catch {
-      // ignore
-    }
-  };
+  useEffect(() => {
+    fetchVitals();
+  }, [fetchVitals]);
 
-  // Classify BP reading
   const sysNum = parseInt(systolic, 10);
   const diaNum = parseInt(diastolic, 10);
 
@@ -46,142 +83,330 @@ export default function PatientVitalsPage() {
     if (isNaN(sysNum) || isNaN(diaNum)) return null;
     if (sysNum >= 140 || diaNum >= 90) {
       return {
-        label: 'Stage 2 Hypertension (High)',
-        color: 'text-risk-red bg-rose-50 border-rose-200',
+        label: 'Stage 2 Hypertension (Elevated — Share with Dr. Rao)',
+        classes: 'text-[#DC2626] bg-[#FEF2F2] border-[#FECACA]',
       };
     }
     if (sysNum >= 130 || diaNum >= 80) {
       return {
-        label: 'Stage 1 Hypertension (Moderate)',
-        color: 'text-risk-yellow bg-amber-50 border-amber-200',
+        label: 'Stage 1 Elevated Blood Pressure',
+        classes: 'text-[#D97706] bg-[#FFFBEB] border-[#FDE68A]',
       };
     }
     if (sysNum >= 120 && diaNum < 80) {
       return {
-        label: 'Elevated Pressure',
-        color: 'text-amber-600 bg-amber-50 border-amber-200',
+        label: 'Slightly Elevated Pressure',
+        classes: 'text-[#D97706] bg-[#FFFBEB] border-[#FDE68A]',
       };
     }
     return {
-      label: 'Normal (<120 / <80)',
-      color: 'text-risk-green bg-emerald-50 border-emerald-200',
+      label: 'Normal (<120 / <80 mmHg)',
+      classes: 'text-[#15803D] bg-[#F0FDF4] border-[#BBF7D0]',
     };
   };
 
-  const category = getBpCategory();
+  const bpCategory = getBpCategory();
 
-  const handleSave = async (e: React.FormEvent) => {
+  const handleSaveBp = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!sysNum || !diaNum) return;
-
     setIsSubmitting(true);
 
-    const newVital: Vital = {
-      id: `vital-${Date.now()}`,
-      patientId: HERO_PATIENT.id,
-      type: 'bp',
-      valueA: sysNum,
-      valueB: diaNum,
-      recordedAt: 'Just now',
-    };
-
-    // Optimistic UI update
-    setVitalsHistory([newVital, ...vitalsHistory]);
-
     try {
-      await fetch(`/api/patients/${HERO_PATIENT.id}/vitals`, {
+      const res = await fetch(`/api/patients/${PATIENT_ID}/vitals`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           type: 'bp',
           valueA: sysNum,
           valueB: diaNum,
+          source: 'manual',
         }),
       });
-    } catch {
-      // local fallback
-    }
 
-    setIsSubmitting(false);
-    setToastMessage(t('reading_saved', locale));
-    setTimeout(() => setToastMessage(null), 3000);
+      const pulseNum = parseInt(pulse, 10);
+      if (!isNaN(pulseNum) && pulseNum >= 40 && pulseNum <= 200) {
+        await fetch(`/api/patients/${PATIENT_ID}/vitals`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            type: 'hr',
+            valueA: pulseNum,
+            source: 'manual',
+          }),
+        });
+      }
+
+      if (res.ok) {
+        showToast(t('reading_saved', locale));
+        await fetchVitals();
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
-  return (
-    <div className="min-h-screen bg-[#F4F1EA] md:bg-[#EAE6DB] flex flex-col items-center">
-      <div className="w-full max-w-md min-h-screen bg-[#FAF8F5] text-ink-900 flex flex-col relative md:border-x-2 md:border-ink-900 md:shadow-[0_10px_35px_rgba(0,0,0,0.08)] pb-28 sm:pb-32">
-        <PatientHeader
-          locale={locale}
-          onLocaleChange={handleLocaleChange}
-          showBack
-          backHref="/patient"
-          title={t('log_bp_title', locale)}
-        />
+  const tabMeta: Array<{ id: VitalTab; label: string; icon: React.ElementType; unit: string }> = [
+    { id: 'spo2', label: t('vitals.spo2', locale), icon: Wind, unit: '%' },
+    { id: 'hr', label: t('vitals.hr', locale), icon: Activity, unit: 'bpm' },
+    { id: 'bp', label: t('vitals.bp', locale), icon: Heart, unit: 'mmHg' },
+    { id: 'glucose', label: t('vitals.glucose', locale), icon: Droplets, unit: 'mg/dL' },
+    { id: 'steps', label: t('vitals.steps_calories', locale), icon: Footprints, unit: 'steps' },
+    { id: 'sleep', label: t('vitals.sleep', locale), icon: Moon, unit: 'hrs' },
+  ];
 
-        <main className="w-full px-3.5 sm:px-4 pt-3.5 space-y-4">
-        <form onSubmit={handleSave} className="space-y-4">
-          <div className="bg-white rounded-[20px] border-2 border-ink-900 shadow-[3px_3px_0px_#121214] p-4 sm:p-5">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="p-2.5 bg-[#FF5C98] text-white rounded-xl border border-ink-900">
-                <Heart className="w-6 h-6 stroke-[2.5]" />
-              </div>
-              <div>
-                <h2 className="font-display font-bold text-lg sm:text-xl text-ink-900">
-                  {t('log_bp_title', locale)}
-                </h2>
-                <p className="font-body text-xs text-ink-500">
-                  Measured with cuff on left arm
+  const currentTabMeta = tabMeta.find((item) => item.id === activeTab) || tabMeta[0];
+
+  const filtered = vitals
+    .filter((v) => v.type === activeTab)
+    .sort(
+      (a, b) =>
+        new Date(a.recorded_at || a.recordedAt || 0).getTime() -
+        new Date(b.recorded_at || b.recordedAt || 0).getTime()
+    );
+
+  const calorieByDay = new Map<string, number>();
+  if (activeTab === 'steps') {
+    vitals
+      .filter((v) => v.type === 'calories')
+      .forEach((v) => {
+        const d = new Date(v.recorded_at || v.recordedAt || 0);
+        if (!isNaN(d.getTime())) {
+          calorieByDay.set(d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }), Number(v.value_a ?? v.valueA ?? 0));
+        }
+      });
+  }
+
+  const chartData = filtered.map((v) => {
+    const d = new Date(v.recorded_at || v.recordedAt || 0);
+    const label = isNaN(d.getTime())
+      ? v.recorded_at || ''
+      : d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    const valA = Number(v.value_a ?? v.valueA ?? 0);
+    const valB = v.value_b ?? v.valueB ?? null;
+    return {
+      date: label,
+      value: valA,
+      secondary: valB !== null ? Number(valB) : calorieByDay.get(label),
+    };
+  });
+
+  const numericValues = filtered.map((v) => Number(v.value_a ?? v.valueA ?? 0));
+  const latestVal = numericValues.length > 0 ? numericValues[numericValues.length - 1] : null;
+  const avgVal =
+    numericValues.length > 0
+      ? Number((numericValues.reduce((a, b) => a + b, 0) / numericValues.length).toFixed(1))
+      : null;
+  const minVal = numericValues.length > 0 ? Math.min(...numericValues) : null;
+  const maxVal = numericValues.length > 0 ? Math.max(...numericValues) : null;
+
+  const recentBpHistory = vitals
+    .filter((v) => v.type === 'bp')
+    .sort(
+      (a, b) =>
+        new Date(b.recorded_at || b.recordedAt || 0).getTime() -
+        new Date(a.recorded_at || a.recordedAt || 0).getTime()
+    )
+    .slice(0, 6);
+
+  return (
+    <div className="min-h-screen bg-[#F8FAFC] text-[#0F172A] pb-28">
+      <PatientHeader
+        locale={locale}
+        onLocaleChange={changeLocale}
+        showBack
+        backHref="/patient"
+        title={t('log_bp_title', locale)}
+      />
+
+      <main className="max-w-3xl mx-auto px-4 pt-5 space-y-6">
+        {/* Vital Category Selector Tabs */}
+        <div className="flex items-center gap-2 overflow-x-auto pb-1">
+          {tabMeta.map((tab) => {
+            const Icon = tab.icon;
+            const active = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setSelectedTab(tab.id)}
+                className={`inline-flex items-center gap-2 min-h-[44px] px-4 rounded-full text-sm font-medium border whitespace-nowrap transition-colors cursor-pointer ${
+                  active
+                    ? 'bg-[#0D9488] text-white border-[#0D9488] shadow-xs'
+                    : 'bg-white text-[#334155] border-[#E2E8F0] hover:bg-[#F1F5F9]'
+                }`}
+              >
+                <Icon className="w-4 h-4 shrink-0" />
+                <span>{tab.label}</span>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Summary KPI Strip + Recharts Trend Card */}
+        <section className="bg-white border border-[#E2E8F0] rounded-2xl p-5 sm:p-6 shadow-[0_1px_3px_rgba(15,23,42,0.06)] space-y-5">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <h2 className="text-lg font-semibold text-[#0F172A]">
+                {currentTabMeta.label} Trend
+              </h2>
+              <p className="text-sm text-[#64748B]">
+                Live watch &amp; clinic telemetry ({filtered.length} readings)
+              </p>
+            </div>
+            <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-[#F0FDFA] text-[#0F766E] border border-[#CCFBF1]">
+              Unit: {currentTabMeta.unit}
+            </span>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {[
+              { label: 'Latest', val: latestVal },
+              { label: 'Average', val: avgVal },
+              { label: 'Min', val: minVal },
+              { label: 'Max', val: maxVal },
+            ].map((stat) => (
+              <div
+                key={stat.label}
+                className="p-3 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0]"
+              >
+                <p className="text-xs text-[#64748B]">{stat.label}</p>
+                <p className="text-xl font-semibold text-[#0F172A] mt-0.5 tabular-nums">
+                  {stat.val !== null ? stat.val.toLocaleString() : '—'}
                 </p>
               </div>
+            ))}
+          </div>
+
+          <div className="h-60 w-full">
+            {loading ? (
+              <div className="h-full bg-[#F1F5F9] rounded-xl animate-pulse" />
+            ) : chartData.length === 0 ? (
+              <div className="h-full flex items-center justify-center text-sm text-[#64748B]">
+                No readings recorded for {currentTabMeta.label} yet.
+              </div>
+            ) : activeTab === 'bp' ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={chartData} margin={{ top: 10, right: 12, left: -16, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" vertical={false} />
+                  <XAxis dataKey="date" tick={{ fill: '#64748B', fontSize: 11 }} tickLine={false} />
+                  <YAxis domain={['auto', 'auto']} tick={{ fill: '#64748B', fontSize: 11 }} tickLine={false} axisLine={false} />
+                  <Tooltip />
+                  <ReferenceLine y={140} stroke="#DC2626" strokeDasharray="4 4" />
+                  <Line
+                    type="monotone"
+                    dataKey="value"
+                    name="Systolic"
+                    stroke="#0D9488"
+                    strokeWidth={2.5}
+                    dot={{ r: 3.5, fill: '#0D9488' }}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="secondary"
+                    name="Diastolic"
+                    stroke="#4F46E5"
+                    strokeWidth={2}
+                    dot={{ r: 3, fill: '#4F46E5' }}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={chartData} margin={{ top: 10, right: 12, left: -16, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="vitalAreaFill" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#0D9488" stopOpacity={0.22} />
+                      <stop offset="95%" stopColor="#0D9488" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" vertical={false} />
+                  <XAxis dataKey="date" tick={{ fill: '#64748B', fontSize: 11 }} tickLine={false} />
+                  <YAxis domain={['auto', 'auto']} tick={{ fill: '#64748B', fontSize: 11 }} tickLine={false} axisLine={false} />
+                  <Tooltip />
+                  {activeTab === 'spo2' && (
+                    <ReferenceLine y={92} stroke="#DC2626" strokeDasharray="4 4" />
+                  )}
+                  {activeTab === 'hr' && (
+                    <ReferenceLine y={100} stroke="#D97706" strokeDasharray="4 4" />
+                  )}
+                  <Area
+                    type="monotone"
+                    dataKey="value"
+                    name={currentTabMeta.label}
+                    stroke="#0D9488"
+                    strokeWidth={2.5}
+                    fill="url(#vitalAreaFill)"
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            )}
+          </div>
+        </section>
+
+        {/* Manual Cuff Blood Pressure Logger */}
+        <form
+          onSubmit={handleSaveBp}
+          className="bg-white border border-[#E2E8F0] rounded-2xl p-5 sm:p-6 shadow-[0_1px_3px_rgba(15,23,42,0.06)] space-y-4"
+        >
+          <div className="flex items-center gap-3">
+            <span className="w-10 h-10 rounded-xl bg-[#F0FDFA] border border-[#CCFBF1] text-[#0D9488] flex items-center justify-center shrink-0">
+              <Heart className="w-5 h-5" />
+            </span>
+            <div>
+              <h3 className="text-lg font-semibold text-[#0F172A]">
+                Log Cuff Blood Pressure
+              </h3>
+              <p className="text-sm text-[#64748B]">
+                Measured sitting quietly with cuff on left arm
+              </p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div>
+              <label className="block text-sm font-medium text-[#334155] mb-1.5">
+                {t('systolic', locale)}
+              </label>
+              <div className="relative">
+                <input
+                  type="number"
+                  value={systolic}
+                  onChange={(e) => setSystolic(e.target.value)}
+                  min={70}
+                  max={250}
+                  required
+                  className="w-full min-h-[48px] px-3.5 pr-14 rounded-xl border border-[#CBD5E1] text-lg font-semibold text-[#0F172A] tabular-nums focus:outline-none focus:ring-2 focus:ring-[#0D9488]"
+                />
+                <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs text-[#64748B]">
+                  mmHg
+                </span>
+              </div>
             </div>
 
-            {/* Inputs: Systolic & Diastolic */}
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block font-body text-xs sm:text-sm font-bold text-ink-700 mb-1">
-                  {t('systolic', locale)}
-                </label>
-                <div className="relative">
-                  <input
-                    type="number"
-                    value={systolic}
-                    onChange={(e) => setSystolic(e.target.value)}
-                    min={70}
-                    max={250}
-                    required
-                    className="w-full font-data font-bold text-xl sm:text-2xl text-ink-900 px-3.5 py-2.5 rounded-xl border-2 border-ink-900 focus:outline-none focus:ring-2 focus:ring-ink-900 min-h-[48px]"
-                  />
-                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[11px] font-bold text-ink-400">
-                    mmHg
-                  </span>
-                </div>
-              </div>
-
-              <div>
-                <label className="block font-body text-xs sm:text-sm font-bold text-ink-700 mb-1">
-                  {t('diastolic', locale)}
-                </label>
-                <div className="relative">
-                  <input
-                    type="number"
-                    value={diastolic}
-                    onChange={(e) => setDiastolic(e.target.value)}
-                    min={40}
-                    max={150}
-                    required
-                    className="w-full font-data font-bold text-xl sm:text-2xl text-ink-900 px-3.5 py-2.5 rounded-xl border-2 border-ink-900 focus:outline-none focus:ring-2 focus:ring-ink-900 min-h-[48px]"
-                  />
-                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[11px] font-bold text-ink-400">
-                    mmHg
-                  </span>
-                </div>
+            <div>
+              <label className="block text-sm font-medium text-[#334155] mb-1.5">
+                {t('diastolic', locale)}
+              </label>
+              <div className="relative">
+                <input
+                  type="number"
+                  value={diastolic}
+                  onChange={(e) => setDiastolic(e.target.value)}
+                  min={40}
+                  max={150}
+                  required
+                  className="w-full min-h-[48px] px-3.5 pr-14 rounded-xl border border-[#CBD5E1] text-lg font-semibold text-[#0F172A] tabular-nums focus:outline-none focus:ring-2 focus:ring-[#0D9488]"
+                />
+                <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs text-[#64748B]">
+                  mmHg
+                </span>
               </div>
             </div>
 
-            {/* Pulse Rate */}
-            <div className="mt-3">
-              <label className="block font-body text-xs sm:text-sm font-bold text-ink-700 mb-1">
-                {t('pulse', locale)} (BPM)
+            <div>
+              <label className="block text-sm font-medium text-[#334155] mb-1.5">
+                {t('pulse', locale)}
               </label>
               <div className="relative">
                 <input
@@ -190,93 +415,98 @@ export default function PatientVitalsPage() {
                   onChange={(e) => setPulse(e.target.value)}
                   min={40}
                   max={200}
-                  className="w-full font-data font-bold text-lg text-ink-900 px-3.5 py-2.5 rounded-xl border-2 border-ink-900 focus:outline-none focus:ring-2 focus:ring-ink-900 min-h-[44px]"
+                  className="w-full min-h-[48px] px-3.5 pr-12 rounded-xl border border-[#CBD5E1] text-lg font-semibold text-[#0F172A] tabular-nums focus:outline-none focus:ring-2 focus:ring-[#0D9488]"
                 />
-                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[11px] font-bold text-ink-400">
+                <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs text-[#64748B]">
                   bpm
                 </span>
               </div>
             </div>
-
-            {/* Live Indicator */}
-            {category && (
-              <div className={`mt-4 p-3 rounded-xl border-2 border-ink-900 flex items-center gap-2 ${category.color}`}>
-                <Activity className="w-4 h-4 shrink-0" />
-                <span className="font-body text-xs sm:text-sm font-bold">
-                  {category.label}
-                </span>
-              </div>
-            )}
-
-            {/* Save Button */}
-            <div className="mt-5">
-              <button
-                type="submit"
-                disabled={isSubmitting}
-                className="w-full bg-[#D4F77C] hover:bg-[#CEF267] text-ink-900 font-display font-bold text-base min-h-[48px] rounded-xl border-2 border-ink-900 shadow-[2px_2px_0px_#121214] active:translate-y-0.5 flex items-center justify-center gap-2 transition-all cursor-pointer"
-              >
-                <span>{t('save_reading', locale)}</span>
-              </button>
-            </div>
           </div>
+
+          {bpCategory && (
+            <div className={`p-3 rounded-xl border text-sm font-medium ${bpCategory.classes}`}>
+              {bpCategory.label}
+            </div>
+          )}
+
+          <button
+            type="submit"
+            disabled={isSubmitting}
+            className="w-full min-h-[48px] rounded-xl bg-[#0D9488] hover:bg-[#0F766E] text-white text-base font-semibold shadow-xs transition-colors flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+          >
+            {isSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
+            <span>{isSubmitting ? t('saving', locale) : t('save_reading', locale)}</span>
+          </button>
         </form>
 
-        {/* History List */}
-        <div className="space-y-2.5">
-          <div className="flex items-center gap-2 px-0.5">
-            <History className="w-4 h-4 text-ink-600" />
-            <h3 className="font-display font-bold text-base sm:text-lg text-ink-900">
-              Recent Readings
-            </h3>
-          </div>
+        {/* Recent Cuff Readings */}
+        {recentBpHistory.length > 0 && (
+          <section className="space-y-3">
+            <div className="flex items-center gap-2">
+              <History className="w-4 h-4 text-[#64748B]" />
+              <h3 className="text-base font-semibold text-[#0F172A]">
+                Recent Blood Pressure Readings
+              </h3>
+            </div>
 
-          <div className="space-y-2">
-            {vitalsHistory
-              .filter((v) => v.type === 'bp')
-              .map((item) => (
-                <div
-                  key={item.id}
-                  className="bg-white rounded-[18px] border-2 border-ink-900 p-3.5 shadow-[2px_2px_0px_#121214] flex items-center justify-between"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 bg-[#FF5C98] text-white border border-ink-900 rounded-xl">
-                      <Heart className="w-4 h-4 stroke-[2.5]" />
-                    </div>
+            <div className="bg-white border border-[#E2E8F0] rounded-2xl divide-y divide-[#F1F5F9]">
+              {recentBpHistory.map((item) => {
+                const dateStr = (() => {
+                  const d = new Date(item.recorded_at || item.recordedAt || 0);
+                  return isNaN(d.getTime())
+                    ? item.recorded_at || ''
+                    : d.toLocaleDateString([], {
+                        month: 'short',
+                        day: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      });
+                })();
+
+                return (
+                  <div
+                    key={item.id}
+                    className="p-4 flex items-center justify-between gap-3"
+                  >
                     <div>
-                      <p className="font-data font-bold text-base sm:text-lg text-ink-900">
-                        {item.valueA ?? item.value_a} / {item.valueB ?? item.value_b}{' '}
-                        <span className="text-xs text-ink-500 font-normal">mmHg</span>
+                      <p className="text-base font-semibold text-[#0F172A] tabular-nums">
+                        {item.value_a ?? item.valueA} / {item.value_b ?? item.valueB}{' '}
+                        <span className="text-xs font-normal text-[#64748B]">mmHg</span>
                       </p>
-                      <p className="font-body text-xs text-ink-500">
-                        {item.recordedAt ?? item.recorded_at}
-                      </p>
+                      <p className="text-xs text-[#64748B] mt-0.5">{dateStr}</p>
                     </div>
+                    <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-[#F8FAFC] border border-[#E2E8F0] text-[#334155]">
+                      {item.source === 'simulator' ? 'Sim' : 'Recorded'}
+                    </span>
                   </div>
+                );
+              })}
+            </div>
+          </section>
+        )}
 
-                  <span className="font-body text-xs font-bold px-2.5 py-1 rounded-full bg-[#FAF8F5] border border-ink-900 text-ink-900">
-                    Recorded
-                  </span>
-                </div>
-              ))}
-          </div>
-        </div>
-
-        {/* Disclaimer */}
-        <p className="font-body text-xs text-ink-500 text-center pt-2">
+        <p className="text-xs text-[#64748B] text-center">
           {t('decision_support_note', locale)}
         </p>
       </main>
 
-      {/* Toast */}
-      {toastMessage && (
-        <div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-50 bg-ink-900 text-white px-5 py-3 rounded-full border-2 border-ink-900 shadow-[3px_3px_0px_#121214] flex items-center gap-2 font-display text-sm font-semibold animate-bounce">
-          <CheckCircle2 className="w-5 h-5 text-[#D4F77C]" />
-          <span>{toastMessage}</span>
-        </div>
-      )}
-
+      <PatientToast message={toast} />
       <BottomNav locale={locale} />
-      </div>
     </div>
+  );
+}
+
+export default function PatientVitalsPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center text-sm text-[#64748B]">
+          Loading vitals charts...
+        </div>
+      }
+    >
+      <VitalsContent />
+    </Suspense>
   );
 }

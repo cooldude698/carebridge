@@ -1,19 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
-import { MOCK_PATIENT_DETAILS } from "@/lib/mockData";
+import { getPatientDetailDb, getPrescriptionsDb } from "@/lib/supabase/db";
 import { generateFhirR4Bundle } from "@/lib/fhir/export";
+
+export const dynamic = "force-dynamic";
 
 export async function GET(
   request: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
   const params = await context.params;
-  const patientId = params.id;
-  const detail = MOCK_PATIENT_DETAILS[patientId];
+  const detail = await getPatientDetailDb(params.id, "doctor");
 
   if (!detail) {
     return NextResponse.json({ error: "Patient not found" }, { status: 404 });
   }
 
-  const bundle = generateFhirR4Bundle(detail);
+  const prescriptions = await getPrescriptionsDb(params.id);
+  const bundle = generateFhirR4Bundle(detail, prescriptions);
   return NextResponse.json(bundle);
 }

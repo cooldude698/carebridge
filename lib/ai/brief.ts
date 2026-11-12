@@ -1,3 +1,4 @@
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { store } from "@/lib/supabase/localStore";
 import { createClient } from "@/lib/supabase/server";
 import { buildBriefContext, parseBriefOutput } from "./contextBuilder";
@@ -36,7 +37,7 @@ Rules:
 - Output plain text only. No markdown, no bullet points.`;
 
 export async function generateBrief(patientId: string): Promise<BriefResult> {
-  let supabase: any = null;
+  let supabase: SupabaseClient | null = null;
   try {
     supabase = await createClient();
   } catch {
@@ -185,7 +186,11 @@ export async function generateBrief(patientId: string): Promise<BriefResult> {
   return result;
 }
 
-async function persistBrief(patientId: string, result: BriefResult, supabase?: any) {
+async function persistBrief(
+  patientId: string,
+  result: BriefResult,
+  supabase?: SupabaseClient | null
+) {
   try {
     store.addBrief({
       id: `brief-${Date.now()}`,

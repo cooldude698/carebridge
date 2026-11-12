@@ -1,8 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { store } from "@/lib/supabase/localStore";
-import { MOCK_PATIENT_DETAILS, SEED_MEDICINES } from "@/lib/mockData";
-import { buildWearableContext } from "@/lib/wearable";
-import { createClient } from "@/lib/supabase/server";
+import { getPatientDetailDb } from "@/lib/supabase/db";
 
 export const dynamic = "force-dynamic";
 
@@ -11,40 +8,15 @@ export async function GET(
   context: { params: Promise<{ id: string }> }
 ) {
   const params = await context.params;
-  const rawId = params.id;
-  const patientId = rawId === "patient-ramesh" ? "p1" : rawId;
   const url = new URL(request.url);
-  const actor = url.searchParams.get("actor") === "patient" ? "patient" : "doctor";
+  const rawActor = url.searchParams.get("actor");
+  const actor: "doctor" | "patient" | "family" =
+    rawActor === "patient" ? "patient" : rawActor === "family" ? "family" : "doctor";
 
-  let detail = null;
-  try {
-    detail = store.getPatientDetail(patientId, actor);
-  } catch {
-    // continue to fallback
-  }
-
+  const detail = await getPatientDetailDb(params.id, actor);
   if (!detail) {
-    const fallback = MOCK_PATIENT_DETAILS[patientId] || MOCK_PATIENT_DETAILS.p1;
-    if (!fallback) {
-      return NextResponse.json({ error: "Patient not found" }, { status: 404 });
-    }
-    detail = {
-      ...fallback,
-      medicines: SEED_MEDICINES,
-    };
+    return NextResponse.json({ error: "Patient not found" }, { status: 404 });
   }
 
-  let supabase: any = null;
-  try {
-    supabase = await createClient();
-  } catch {
-    // offline or local
-  }
-
-  const wearable = await buildWearableContext(patientId, supabase).catch(() => null);
-
-  return NextResponse.json({
-    ...detail,
-    wearable,
-  });
+  return NextResponse.json(detail);
 }

@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { store } from "@/lib/supabase/localStore";
-import { createClient } from "@/lib/supabase/server";
+import { getGoalsDb } from "@/lib/supabase/db";
 
 export const dynamic = "force-dynamic";
 
@@ -16,59 +15,23 @@ export async function GET(
       return NextResponse.json({ error: "Patient ID is required" }, { status: 400 });
     }
 
-    // Try Supabase first if available
-    try {
-      const supabase = await createClient();
-      if (supabase && typeof supabase.from === "function") {
-        const { data: dbGoals } = await supabase
-          .from("patient_goals")
-          .select("id, category, target, by_date, completed_at, source_note_id")
-          .eq("patient_id", patientId)
-          .order("completed_at", { ascending: true, nullsFirst: true })
-          .order("by_date", { ascending: true });
-
-        const { data: dbNotes } = await supabase
-          .from("doctor_notes")
-          .select("id, created_at, note_text")
-          .eq("patient_id", patientId)
-          .order("created_at", { ascending: false })
-          .limit(1);
-
-        if (dbGoals || dbNotes) {
-          return NextResponse.json({
-            goals: dbGoals || [],
-            latestNote: dbNotes && dbNotes.length > 0 ? dbNotes[0] : null,
-          });
-        }
-      }
-    } catch {
-      // Local fallback
-    }
-
-    // Local store fallback
-    const { goals, latestNote } = store.getPatientGoals(patientId);
+    const { goals, latestNote } = await getGoalsDb(patientId);
 
     return NextResponse.json({
       goals: goals.map((g) => ({
         id: g.id,
+        patient_id: g.patient_id,
         category: g.category,
         target: g.target,
         by_date: g.by_date,
         completed_at: g.completed_at,
         source_note_id: g.source_note_id,
+        created_at: g.created_at,
       })),
-      latestNote: latestNote
-        ? {
-            id: latestNote.id,
-            created_at: latestNote.created_at,
-            note_text: latestNote.note_text,
-          }
-        : null,
+      latestNote,
     });
-  } catch (err: any) {
-    return NextResponse.json(
-      { error: err.message || "Failed to retrieve patient goals" },
-      { status: 500 }
-    );
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : "Failed to retrieve patient goals";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

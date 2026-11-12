@@ -2,6 +2,8 @@ export type RiskBand = "green" | "yellow" | "red";
 
 export type ConsentCategory = "vitals" | "medicines" | "steps" | "glucose";
 
+export type VitalType = "bp" | "steps" | "glucose" | "hr" | "spo2" | "calories" | "sleep";
+
 export interface Patient {
   id: string;
   name: string;
@@ -12,6 +14,10 @@ export interface Patient {
   family_id: string;
   discharged_at?: string | null;
   created_at: string;
+  gender?: string;
+  whatsapp_number?: string | null;
+  blood_group?: string | null;
+  allergies?: string[];
 }
 
 export interface Doctor {
@@ -58,18 +64,20 @@ export interface Vital {
   id: string;
   patient_id?: string;
   patientId?: string;
-  type: "bp" | "steps" | "glucose" | "hr";
+  type: VitalType;
   value_a?: number;
   valueA?: number;
   value_b?: number | null;
   valueB?: number | null;
   recorded_at?: string;
   recordedAt?: string;
+  source?: "wearable" | "manual" | "simulator";
+  device_id?: string | null;
 }
 
 export interface AnomalyFlag {
   ruleId: string;
-  severity: "HIGH" | "MEDIUM" | "LOW";
+  severity: "CRITICAL" | "HIGH" | "MEDIUM" | "LOW";
   title: string;
   detail: string;
   readingId: string; // MUST be a real vitals.id from the DB — never invented
@@ -100,8 +108,136 @@ export interface WearableContext {
     latestFasting: number | null;
     mean: number | null;
   };
+  spo2: {
+    latest: number | null;
+    min24h: number | null;
+    readings: { id: string; at: string; pct: number }[];
+  };
+  calories: {
+    dailyMean: number;
+    latest: number;
+  };
+  sleep: {
+    lastNightHours: number | null;
+    avg7dHours: number | null;
+  };
   anomalyFlags: AnomalyFlag[];
   lastUpdated: string;
+}
+
+export interface WearableDevice {
+  id: string;
+  patient_id: string;
+  provider: "google_fit" | "wearos" | "apple_health" | "manual" | "simulator";
+  device_name: string;
+  is_active: boolean;
+  last_synced_at: string | null;
+  created_at: string;
+}
+
+export interface SymptomLog {
+  id: string;
+  patient_id: string;
+  raw_text: string;
+  language: string;
+  extracted_symptoms: string[];
+  severity_hint: "low" | "moderate" | "high";
+  created_at: string;
+}
+
+export interface RiskFlag {
+  type: string;
+  severity: "low" | "medium" | "high" | "critical";
+  value: number | string;
+  normalRange: string;
+  message: string;
+  readingId?: string;
+}
+
+export interface DiagnosisReport {
+  id: string;
+  patient_id: string;
+  generated_at: string;
+  ai_summary: string;
+  risk_flags: RiskFlag[];
+  urgency: "routine" | "soon" | "urgent" | "emergency";
+  recommended_specialties: string[];
+  lifestyle_recommendations: string[];
+  symptom_input?: string | null;
+  reading_ids: string[];
+  model_version: string;
+  reviewed_by_doctor?: string | null;
+  doctor_notes?: string | null;
+  reviewed_at?: string | null;
+}
+
+export interface PrescribedMedicine {
+  id: string;
+  prescription_id: string;
+  medicine_id?: string;
+  medicine_name: string;
+  dosage: string;
+  frequency: string;
+  times: string[];
+  duration: string;
+  with_food: boolean;
+  instructions?: string | null;
+}
+
+export interface LifestyleTarget {
+  id: string;
+  prescription_id: string;
+  patient_id: string;
+  category: "diet" | "steps" | "calories" | "sleep" | "bp" | "glucose" | "other";
+  description: string;
+  target_value?: number | null;
+  unit?: string | null;
+}
+
+export interface WatchSyncPayload {
+  synced_at: string;
+  next_dose_summary: string;
+  daily_step_target: number;
+  daily_calorie_target: number;
+  active_alert_level: "normal" | "watch" | "urgent";
+  diet_rule_short: string;
+}
+
+export interface Prescription {
+  id: string;
+  patient_id: string;
+  doctor_id: string;
+  doctor_name: string;
+  diagnosis_report_id?: string | null;
+  issued_at: string;
+  follow_up_date?: string | null;
+  status: "active" | "completed" | "cancelled";
+  doctor_summary: string;
+  medicines: PrescribedMedicine[];
+  lifestyle_targets: LifestyleTarget[];
+  watch_sync_payload?: WatchSyncPayload | null;
+}
+
+export interface WhatsAppNotificationLog {
+  id: string;
+  patient_id: string;
+  recipient_phone: string;
+  recipient_role: "patient" | "family" | "doctor";
+  event_type: string;
+  message: string;
+  status: "sent" | "simulated_sent" | "failed";
+  provider_message_id?: string | null;
+  created_at: string;
+}
+
+export interface WhatsAppPreferences {
+  patient_id: string;
+  patient_phone: string;
+  guardian_name: string;
+  guardian_phone: string;
+  new_prescription_alerts: boolean;
+  missed_medicine_reminders: boolean;
+  critical_vital_alerts: boolean;
 }
 
 export interface RiskScore {
@@ -203,6 +339,11 @@ export interface PatientDetail {
   alerts: Alert[];
   consents?: Consent[];
   wearable?: WearableContext | null;
+  activePrescriptions?: Prescription[];
+  latestDiagnosis?: DiagnosisReport | null;
+  recentSymptoms?: SymptomLog[];
+  wearableDevice?: WearableDevice | null;
+  medCompliancePct?: number;
 }
 
 export interface DoctorNoteReminder {
@@ -218,7 +359,7 @@ export interface DoctorNote {
   note_text: string;
   parsed_instructions?: {
     reminders: DoctorNoteReminder[];
-    goals: { category: "steps" | "medicine" | "bp" | "glucose" | "other"; target: string; by: string }[];
+    goals: { category: "steps" | "medicine" | "bp" | "glucose" | "other"; target: string; by?: string }[];
     followUpDate: string | null;
   } | null;
   created_at: string;
@@ -227,7 +368,7 @@ export interface DoctorNote {
 export interface PatientGoal {
   id: string;
   patient_id: string;
-  category: "steps" | "medicine" | "bp" | "glucose" | "other";
+  category: "steps" | "medicine" | "bp" | "glucose" | "diet" | "calories" | "sleep" | "other";
   target: string;
   by_date?: string | null;
   source_note_id?: string | null;
@@ -289,17 +430,35 @@ export interface FamilyFeedResponse {
     latestSteps: number;
   };
   alerts: Alert[];
+  latestDiagnosis?: DiagnosisReport | null;
+  activePrescriptions?: Prescription[];
+  lifestyleProgress?: {
+    stepsCurrent: number;
+    stepsTarget: number;
+    caloriesCurrent: number;
+    caloriesTarget: number;
+    goalsCompleted: number;
+    goalsTotal: number;
+  };
+  wearableSummary?: {
+    spo2: number | null;
+    hr: number | null;
+    bp: string | null;
+    steps: number;
+    calories: number;
+  };
 }
 
 export interface SimEventRequest {
   patientId: string;
-  kind: "miss_dose" | "bp_spike" | "steps_drop" | "recover" | "hr_spike";
+  kind: "miss_dose" | "bp_spike" | "steps_drop" | "recover" | "hr_spike" | "spo2_drop";
   params?: {
     systolic?: number;
     diastolic?: number;
     medicineId?: string;
     steps?: number;
     hr?: number;
+    spo2?: number;
   };
 }
 

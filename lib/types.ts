@@ -411,27 +411,27 @@ export interface RiskFlag {
 
 export interface DiagnosisReport {
   id: string;
-  patient_id?: string;
+  patient_id: string;
   patientId?: string;
-  generated_at?: string;
+  generated_at: string;
   generatedAt?: string;
   issuedAt?: string;
-  ai_summary?: string;
+  ai_summary: string;
   aiSummary?: string;
   summary?: string;
-  risk_flags?: RiskFlag[];
+  risk_flags: RiskFlag[];
   riskFlags?: RiskFlag[] | string[];
   urgency: "routine" | "soon" | "urgent" | "emergency";
-  recommended_specialties?: string[];
+  recommended_specialties: string[];
   recommendedSpecialties?: string[];
-  lifestyle_recommendations?: string[];
+  lifestyle_recommendations: string[];
   lifestyleRecommendations?: string[];
   recommendations?: string[];
   symptom_input?: string | null;
   symptomInput?: string | null;
-  reading_ids?: string[];
+  reading_ids: string[];
   readingIds?: string[];
-  model_version?: string;
+  model_version: string;
   modelVersion?: string;
   reviewed_by_doctor?: string | null;
   reviewedByDoctor?: string | null;
@@ -445,18 +445,18 @@ export interface DiagnosisReport {
 
 export interface PrescribedMedicine {
   id: string;
-  prescription_id?: string;
+  prescription_id: string;
   prescriptionId?: string;
   medicine_id?: string;
   medicineId?: string;
-  medicine_name?: string;
+  medicine_name: string;
   medicineName?: string;
   name?: string;
   dosage: string;
-  frequency?: string;
+  frequency: string;
   times: string[];
-  duration?: string;
-  with_food?: boolean;
+  duration: string;
+  with_food: boolean;
   withFood?: boolean;
   foodTiming?: "with_food" | "before_food" | "after_food" | "empty_stomach" | string;
   instructions?: string | null;
@@ -464,9 +464,9 @@ export interface PrescribedMedicine {
 
 export interface LifestyleTarget {
   id: string;
-  prescription_id?: string;
+  prescription_id: string;
   prescriptionId?: string;
-  patient_id?: string;
+  patient_id: string;
   patientId?: string;
   category: "diet" | "steps" | "calories" | "sleep" | "bp" | "glucose" | "other" | string;
   description: string;
@@ -498,24 +498,24 @@ export interface WatchSyncPayload {
 
 export interface Prescription {
   id: string;
-  patient_id?: string;
+  patient_id: string;
   patientId?: string;
-  doctor_id?: string;
+  doctor_id: string;
   doctorId?: string;
-  doctor_name?: string;
+  doctor_name: string;
   doctorName?: string;
   diagnosis_report_id?: string | null;
   diagnosisReportId?: string | null;
-  issued_at?: string;
+  issued_at: string;
   issuedAt?: string;
   follow_up_date?: string | null;
   followUpDate?: string | null;
-  status?: "active" | "completed" | "cancelled";
-  doctor_summary?: string;
+  status: "active" | "completed" | "cancelled";
+  doctor_summary: string;
   doctorSummary?: string;
   summary?: string;
   medicines: PrescribedMedicine[];
-  lifestyle_targets?: LifestyleTarget[];
+  lifestyle_targets: LifestyleTarget[];
   lifestyleTargets?: LifestyleTarget[];
   watch_sync_payload?: WatchSyncPayload | null;
   watchSyncPayload?: WatchSyncPayload | null;

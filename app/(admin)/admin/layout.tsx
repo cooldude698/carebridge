@@ -1,6 +1,6 @@
 import React from "react";
 import Link from "next/link";
-import { Activity, Users, ArrowLeft, BarChart3 } from "lucide-react";
+import { Activity, Users, ArrowLeft, Sliders } from "lucide-react";
 
 export default function AdminLayout({
   children,
@@ -8,42 +8,49 @@ export default function AdminLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="min-h-screen flex flex-col bg-surface-50">
+    <div className="min-h-screen flex flex-col bg-[#F8FAFC]">
       {/* 64px Top Header */}
-      <header className="h-16 bg-surface-0 border-b border-ink-300/30 px-6 flex items-center justify-between sticky top-0 z-30 shadow-sm">
-        <div className="flex items-center gap-6">
-          <Link href="/" className="flex items-center gap-2 group">
-            <div className="w-8 h-8 rounded-pill bg-brand-teal flex items-center justify-center text-white shadow-sm group-hover:bg-brand-teal-600 transition-colors">
+      <header className="h-16 bg-white border-b border-[#E2E8F0] px-6 flex items-center justify-between sticky top-0 z-30">
+        <div className="flex items-center gap-5">
+          <Link href="/" className="flex items-center gap-2.5 group">
+            <div className="w-8 h-8 rounded-lg bg-[#0D9488] flex items-center justify-center text-white shadow-sm group-hover:bg-[#0F766E] transition-colors">
               <Activity className="w-4 h-4" />
             </div>
-            <span className="font-display font-extrabold text-xl text-ink-900 tracking-tight">
+            <span className="font-display font-bold text-lg text-[#0F172A] tracking-tight">
               CareBridge
             </span>
           </Link>
 
-          <div className="hidden sm:block h-6 w-px bg-ink-300/40" />
+          <div className="hidden sm:block h-5 w-px bg-[#E2E8F0]" />
 
           <div className="flex items-center gap-2">
-            <span className="font-display font-bold text-sm text-ink-900">
-              Hospital Admin & Clinic ROI Portal
+            <span className="font-display font-semibold text-sm text-[#0F172A]">
+              Hospital Admin &amp; AI Safety Audit
             </span>
-            <span className="font-data text-xs px-2 py-0.5 rounded-pill bg-brand-indigo/10 text-brand-indigo font-semibold">
+            <span className="text-[11px] px-2.5 py-0.5 rounded-full bg-[#EEF2FF] text-[#4F46E5] font-medium">
               Sunrise Clinic
             </span>
           </div>
         </div>
 
-        <nav className="flex items-center gap-3">
+        <nav className="flex items-center gap-2">
           <Link
             href="/doctor"
-            className="px-3.5 py-1.5 rounded-pill text-xs font-display font-semibold bg-surface-100 hover:bg-surface-0 border border-ink-300/30 text-ink-900 transition-colors flex items-center gap-1.5"
+            className="px-3 py-1.5 rounded-lg text-xs font-medium bg-[#F8FAFC] hover:bg-[#F1F5F9] border border-[#E2E8F0] text-[#0F172A] transition-colors flex items-center gap-1.5"
           >
-            <Users className="w-3.5 h-3.5 text-brand-teal" />
-            <span>Doctor Dashboard</span>
+            <Users className="w-3.5 h-3.5 text-[#0D9488]" />
+            <span>Doctor Cockpit</span>
+          </Link>
+          <Link
+            href="/sim"
+            className="px-3 py-1.5 rounded-lg text-xs font-medium bg-[#F8FAFC] hover:bg-[#F1F5F9] border border-[#E2E8F0] text-[#0F172A] transition-colors flex items-center gap-1.5"
+          >
+            <Sliders className="w-3.5 h-3.5 text-[#4F46E5]" />
+            <span className="hidden sm:inline">Demo Sim</span>
           </Link>
           <Link
             href="/"
-            className="px-3 py-1.5 text-xs font-display font-semibold text-ink-500 hover:text-ink-900 transition-colors flex items-center gap-1"
+            className="px-2.5 py-1.5 text-xs font-medium text-[#64748B] hover:text-[#0F172A] transition-colors flex items-center gap-1"
           >
             <ArrowLeft className="w-3.5 h-3.5" />
             <span>Home</span>
@@ -57,9 +64,9 @@ export default function AdminLayout({
       </main>
 
       {/* Footer */}
-      <footer className="h-10 bg-surface-0 border-t border-ink-300/30 px-6 flex items-center justify-between text-xs font-data text-ink-500">
-        <span>Decision support & clinical operations analytics • Sunrise Healthcare System</span>
-        <span>Simulated data</span>
+      <footer className="h-10 bg-white border-t border-[#E2E8F0] px-6 flex items-center justify-between text-xs text-[#64748B]">
+        <span>Clinical operations &amp; AI citation audit · Sunrise Clinic</span>
+        <span>DPDP Act Compliant</span>
       </footer>
     </div>
   );

@@ -3,7 +3,7 @@
 -- ==============================================================================
 
 -- Clear existing data
-TRUNCATE TABLE briefs, audit_log, consents, alerts, risk_reasons, risk_scores, vitals, med_logs, medicines, family_members, patients, doctors CASCADE;
+TRUNCATE TABLE whatsapp_notifications, ai_qa_logs, lifestyle_targets, prescription_medicines, prescriptions, diagnosis_reports, symptom_logs, wearable_devices, patient_goals, doctor_notes, briefs, audit_log, consents, alerts, risk_reasons, risk_scores, vitals, med_logs, medicines, family_members, patients, doctors CASCADE;
 
 -- 1. Doctor
 INSERT INTO doctors (id, name, clinic) VALUES
@@ -210,11 +210,16 @@ BEGIN
     );
   END LOOP;
 
-  -- Baseline normal HR readings for last 3 days at 02:00 (so initial state has no HR anomaly)
-  INSERT INTO vitals (id, patient_id, type, value_a, value_b, recorded_at) VALUES
-  ('p1-hr-1', 'p1', 'hr', 72, NULL, (CURRENT_DATE - INTERVAL '1 day') + INTERVAL '2 hours'),
-  ('p1-hr-2', 'p1', 'hr', 72, NULL, (CURRENT_DATE - INTERVAL '2 days') + INTERVAL '2 hours'),
-  ('p1-hr-3', 'p1', 'hr', 72, NULL, (CURRENT_DATE - INTERVAL '3 days') + INTERVAL '2 hours');
+  -- Baseline normal HR, SpO2, Calories & Sleep readings for last 7 days (so initial state has no HR/SpO2 anomaly)
+  FOR day_offset IN REVERSE 7..1 LOOP
+    curr_date := (NOW() - (day_offset || ' days')::INTERVAL)::DATE;
+
+    INSERT INTO vitals (id, patient_id, type, value_a, value_b, source, recorded_at) VALUES
+    ('p1-hr-' || day_offset, 'p1', 'hr', 70 + (day_offset % 5), NULL, 'wearable', curr_date + TIME '02:00:00'),
+    ('p1-spo2-' || day_offset, 'p1', 'spo2', 96 + (day_offset % 3), NULL, 'wearable', curr_date + TIME '08:30:00'),
+    ('p1-cal-' || day_offset, 'p1', 'calories', 280 + (day_offset * 16), NULL, 'wearable', curr_date + TIME '20:00:00'),
+    ('p1-sleep-' || day_offset, 'p1', 'sleep', 6.5 + ((day_offset % 4) * 0.2), NULL, 'wearable', curr_date + TIME '07:00:00');
+  END LOOP;
 END $$;
 
 -- 7. Current Initial Risk Scores & Reasons
@@ -251,3 +256,25 @@ INSERT INTO audit_log (id, patient_id, actor_type, actor_id, action, category, c
 ('aud-1', 'p1', 'doctor', 'd1', 'VIEW_PROFILE', 'all', NOW() - INTERVAL '3 days'),
 ('aud-2', 'p1', 'doctor', 'd1', 'VIEW_VITALS', 'vitals', NOW() - INTERVAL '3 days'),
 ('aud-3', 'p2', 'doctor', 'd1', 'VIEW_PROFILE', 'all', NOW() - INTERVAL '1 day');
+
+-- 10. Seed Wearable Device, Symptom Log, Verified Diagnosis Report & Active Digital Prescription for Ramesh K. (p1)
+INSERT INTO wearable_devices (id, patient_id, provider, device_name, last_synced_at, is_active) VALUES
+('wd-p1', 'p1', 'google_fit', 'Galaxy Watch 6 (Health Connect)', NOW() - INTERVAL '15 minutes', TRUE);
+
+INSERT INTO symptom_logs (id, patient_id, raw_text, language, extracted_symptoms, severity_hint, created_at) VALUES
+('sym-seed-1', 'p1', 'Thoda thakaan aur subah halka chakkar lag raha tha chalne ke baad.', 'Hindi', '["fatigue", "mild dizziness"]'::jsonb, 'moderate', NOW() - INTERVAL '6 hours');
+
+INSERT INTO diagnosis_reports (id, patient_id, generated_at, ai_summary, risk_flags, urgency, recommended_specialties, lifestyle_recommendations, symptom_input, reading_ids, model_version, reviewed_by_doctor, doctor_notes, reviewed_at) VALUES
+('diag-seed-1', 'p1', NOW() - INTERVAL '1 day', 'Post-discharge cardiometabolic monitoring shows mild upward systolic BP drift (146/92 mmHg) and reduced step count (2,650/day). Baseline SpO2 (97%) and nocturnal HR (72 bpm) remain stable.', '[]'::jsonb, 'soon', ARRAY['Internal Medicine', 'Diabetology'], ARRAY['4,500 daily steps', '350 active kcal/day', 'Low-oil low-GI South Indian diet'], 'Mild morning fatigue', ARRAY['p1-bp-1', 'p1-hr-1', 'p1-spo2-1'], 'llama3.2', 'd1', 'Reviewed by Dr. Meera Rao. Continue Metformin & Amlodipine; reinforce walking & low-GI diet.', NOW() - INTERVAL '18 hours');
+
+INSERT INTO prescriptions (id, patient_id, doctor_id, diagnosis_report_id, issued_at, follow_up_date, status, doctor_summary, watch_sync_payload) VALUES
+('rx-seed-1', 'p1', 'd1', 'diag-seed-1', NOW() - INTERVAL '18 hours', (CURRENT_DATE + INTERVAL '14 days')::DATE, 'active', 'Maintain glycemic & BP control post-discharge with twice-daily Metformin, morning Amlodipine, and structured walking/calorie targets.', '{"synced_at":"2026-11-12T08:00:00Z","next_dose_summary":"Metformin 500mg at 20:00","daily_step_target":4500,"daily_calorie_target":350,"active_alert_level":"watch","diet_rule_short":"Low-oil, low-GI meals"}'::jsonb);
+
+INSERT INTO prescription_medicines (id, prescription_id, medicine_id, medicine_name, dosage, frequency, times, duration, with_food, instructions) VALUES
+('pm-seed-1', 'rx-seed-1', 'm1', 'Metformin', '500mg', 'Twice daily', ARRAY['08:00', '20:00'], '30 days', TRUE, 'Take after breakfast and dinner'),
+('pm-seed-2', 'rx-seed-1', 'm2', 'Amlodipine', '5mg', 'Once morning', ARRAY['08:00'], '30 days', FALSE, 'Check morning BP before dose');
+
+INSERT INTO lifestyle_targets (id, prescription_id, patient_id, category, description, target_value, unit) VALUES
+('lt-seed-1', 'rx-seed-1', 'p1', 'steps', 'Daily brisk walking goal synced to smartwatch', 4500, 'steps/day'),
+('lt-seed-2', 'rx-seed-1', 'p1', 'calories', 'Daily active energy burn target', 350, 'kcal/day'),
+('lt-seed-3', 'rx-seed-1', 'p1', 'diet', 'Low-oil, low-glycemic South Indian meals; limit white rice at dinner', NULL, 'meals/day');

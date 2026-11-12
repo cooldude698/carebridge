@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
-import { Search, RefreshCw, Filter } from "lucide-react";
+import { Search, RefreshCw } from "lucide-react";
 import { PatientListItem, RiskBand } from "@/lib/types";
 import { PatientRow } from "@/components/ui/PatientRow";
 import { MOCK_PATIENT_LIST } from "@/lib/mockData";
@@ -17,16 +17,17 @@ export const PatientListPane: React.FC = () => {
   const [search, setSearch] = useState("");
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  // Fetch / Polling simulation
   const fetchPatients = async () => {
     try {
       const res = await fetch("/api/patients");
       if (res.ok) {
         const data = await res.json();
-        setPatients(data);
+        if (Array.isArray(data)) {
+          setPatients(data);
+        }
       }
     } catch {
-      setPatients(MOCK_PATIENT_LIST);
+      // Keep current list on transient network failure
     }
   };
 
@@ -39,10 +40,9 @@ export const PatientListPane: React.FC = () => {
   const handleManualRefresh = async () => {
     setIsRefreshing(true);
     await fetchPatients();
-    setTimeout(() => setIsRefreshing(false), 500);
+    setTimeout(() => setIsRefreshing(false), 400);
   };
 
-  // Filter and search
   const filteredPatients = patients
     .filter((p) => {
       if (filter !== "all" && p.band !== filter) return false;
@@ -58,63 +58,75 @@ export const PatientListPane: React.FC = () => {
     })
     .sort((a, b) => b.score - a.score);
 
+  const filterOptions: { key: "all" | RiskBand; label: string }[] = [
+    { key: "all", label: "All" },
+    { key: "red", label: "High" },
+    { key: "yellow", label: "Watch" },
+    { key: "green", label: "Stable" },
+  ];
+
   return (
-    <div className="w-full md:w-[380px] shrink-0 border-r-2 border-ink-900 bg-white flex flex-col h-full shadow-[2px_0px_0px_#121214]">
-      {/* Top Controls: Search & Refresh */}
-      <div className="p-4 border-b-2 border-ink-900 space-y-3 bg-[#FAF8F5]">
+    <aside className="w-full md:w-[340px] shrink-0 border-r border-[#E2E8F0] bg-white flex flex-col h-full">
+      {/* Top Controls: Search & Filters */}
+      <div className="p-4 border-b border-[#E2E8F0] space-y-3 bg-white">
         <div className="flex items-center justify-between">
-          <h3 className="font-display font-bold text-ink-900 text-sm flex items-center gap-1.5">
-            <span>Risk-Ranked Action List</span>
-            <span className="font-data text-[11px] font-bold px-2 py-0.5 rounded-full bg-[#EDE9FE] border border-ink-900 text-ink-900">
+          <div className="flex items-center gap-2">
+            <h3 className="font-display font-semibold text-[#0F172A] text-sm">
+              Triage Queue
+            </h3>
+            <span className="text-[11px] font-semibold tabular-nums px-2 py-0.5 rounded-full bg-[#F1F5F9] text-[#475569]">
               {filteredPatients.length}
             </span>
-          </h3>
+          </div>
           <button
             onClick={handleManualRefresh}
-            className="p-1.5 rounded-full border border-ink-900 bg-white hover:bg-[#FBF9F4] text-ink-900 shadow-[1.5px_1.5px_0px_#121214] active:translate-y-0.5 transition cursor-pointer"
+            className="p-1.5 rounded-lg border border-[#E2E8F0] bg-white hover:bg-[#F8FAFC] text-[#475569] hover:text-[#0F172A] transition-colors cursor-pointer"
             title="Refresh patient risk scores"
+            aria-label="Refresh patient risk scores"
           >
             <RefreshCw
-              className={`w-3.5 h-3.5 ${isRefreshing ? "animate-spin text-emerald-600" : ""}`}
+              className={`w-3.5 h-3.5 ${isRefreshing ? "animate-spin text-[#0D9488]" : ""}`}
             />
           </button>
         </div>
 
         {/* Search */}
         <div className="relative">
-          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-ink-500" />
+          <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-[#94A3B8]" />
           <input
             type="text"
             placeholder="Search patient, condition, flag..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-9 pr-3 py-2 bg-white border-2 border-ink-900 rounded-xl text-xs font-body text-ink-900 placeholder:text-ink-400 focus:outline-none focus:bg-[#FAF8F5] shadow-[2px_2px_0px_#121214]"
+            className="w-full pl-8 pr-3 py-2 bg-[#F8FAFC] border border-[#E2E8F0] rounded-lg text-xs text-[#0F172A] placeholder:text-[#94A3B8] focus:outline-none focus:bg-white focus:border-[#0D9488] transition-colors"
           />
         </div>
 
-        {/* Filters */}
-        <div className="flex items-center gap-1.5 text-xs font-data">
-          <Filter className="w-3 h-3 text-ink-500 mr-0.5 shrink-0" />
-          {(["all", "red", "yellow", "green"] as const).map((b) => (
-            <button
-              key={b}
-              onClick={() => setFilter(b)}
-              className={`px-2.5 py-1 rounded-full text-[11px] font-bold capitalize transition border-2 border-ink-900 cursor-pointer ${
-                filter === b
-                  ? "bg-ink-900 text-white shadow-[1.5px_1.5px_0px_#121214]"
-                  : "bg-white text-ink-700 hover:bg-[#FAF8F5]"
-              }`}
-            >
-              {b}
-            </button>
-          ))}
+        {/* Filter Pills */}
+        <div className="flex items-center gap-1.5">
+          {filterOptions.map((opt) => {
+            const active = filter === opt.key;
+            return (
+              <button
+                key={opt.key}
+                onClick={() => setFilter(opt.key)}
+                className={`px-2.5 py-1 rounded-full text-[11px] font-medium transition-colors cursor-pointer ${
+                  active
+                    ? "bg-[#0D9488] text-white"
+                    : "bg-[#F1F5F9] text-[#475569] hover:bg-[#E2E8F0] hover:text-[#0F172A]"
+                }`}
+              >
+                {opt.label}
+              </button>
+            );
+          })}
         </div>
       </div>
 
       {/* Patient Rows List */}
-      <div className="flex-1 overflow-y-auto p-3 space-y-2 bg-[#FBF9F4]">
+      <div className="flex-1 overflow-y-auto p-3 space-y-2 bg-[#F8FAFC]">
         {filteredPatients.length === 0 ? (
-          <div className="p-8 text-center text-xs font-body text-ink-500">
+          <div className="p-8 text-center text-xs text-[#64748B]">
             No patients match current filter
           </div>
         ) : (
@@ -128,6 +140,6 @@ export const PatientListPane: React.FC = () => {
           ))
         )}
       </div>
-    </div>
+    </aside>
   );
 };

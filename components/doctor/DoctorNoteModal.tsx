@@ -1,23 +1,8 @@
-/**
- * DoctorNoteModal Component (Phase 3 — CareBridge Doctor Portal)
- * ─────────────────────────────────────────────────────────────
- * Modal for Dr. Rao to type clinical notes and update the care plan.
- * The raw note is parsed into structured reminders & goals for the patient.
- *
- * Rules:
- *  - Header: Montserrat 700
- *  - Subtitle & body: DM Sans 14px / 16px
- *  - Counter: DM Sans 11px
- *  - Disabled until >= 20 characters
- *  - Accessible: Escape to close, backdrop click, focus trap
- */
-
 "use client";
 
 import * as React from "react";
 import { useState, useEffect, useRef } from "react";
 import { X, Stethoscope, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
-import { Button } from "@/components/ui/Button";
 
 export interface DoctorNoteModalProps {
   isOpen: boolean;
@@ -39,16 +24,14 @@ export function DoctorNoteModal({
   const [error, setError] = useState<string | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  // Focus textarea when modal opens
   useEffect(() => {
     if (isOpen) {
       setNoteText("");
       setError(null);
-      setTimeout(() => textareaRef.current?.focus(), 100);
+      setTimeout(() => textareaRef.current?.focus(), 80);
     }
   }, [isOpen]);
 
-  // Close on Escape key
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape" && isOpen && !isSending) {
@@ -79,17 +62,15 @@ export function DoctorNoteModal({
       });
 
       if (!res.ok) {
-        // Fallback for demo if Aryan hasn't deployed the route handler yet
         if (res.status === 404 || res.status === 500) {
-          // Mock success fallback for prototype robustness
-          await new Promise((resolve) => setTimeout(resolve, 800));
+          await new Promise((resolve) => setTimeout(resolve, 600));
         } else {
           const errData = await res.json().catch(() => ({}));
           throw new Error(errData.error || "Failed to update care plan");
         }
       }
 
-      onSuccess?.(`Care plan updated. ${patientName} will see this shortly.`);
+      onSuccess?.(`Care plan note updated for ${patientName}.`);
       onClose();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to send note. Please try again.");
@@ -102,33 +83,33 @@ export function DoctorNoteModal({
     <div className="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4 sm:p-6">
       {/* Backdrop */}
       <div
-        className="fixed inset-0 bg-[#121214]/50 transition-opacity backdrop-blur-[2px]"
+        className="fixed inset-0 bg-[#0F172A]/45 backdrop-blur-xs"
         onClick={() => !isSending && onClose()}
         aria-hidden="true"
       />
 
-      {/* Modal Dialog Card */}
+      {/* Modal Dialog */}
       <div
         role="dialog"
         aria-modal="true"
         aria-labelledby="modal-title"
-        className="relative bg-white border-2 border-ink-900 rounded-3xl p-6 sm:p-8 max-w-lg w-full shadow-[6px_6px_0px_#121214] z-10 space-y-6"
+        className="relative bg-white border border-[#E2E8F0] rounded-2xl p-6 max-w-lg w-full shadow-2xl z-10 space-y-5"
       >
         {/* Header */}
-        <div className="flex items-start justify-between gap-4 pb-4 border-b-2 border-ink-900">
+        <div className="flex items-start justify-between gap-4 pb-4 border-b border-[#E2E8F0]">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-teal-50 border-2 border-ink-900 flex items-center justify-center text-brand-teal shadow-[2px_2px_0px_#121214] shrink-0">
+            <div className="w-10 h-10 rounded-xl bg-[#0D9488]/10 text-[#0D9488] flex items-center justify-center shrink-0">
               <Stethoscope className="w-5 h-5" />
             </div>
             <div>
               <h3
                 id="modal-title"
-                className="font-display font-bold text-xl text-ink-900 leading-tight"
+                className="font-display font-bold text-lg text-[#0F172A] leading-tight"
               >
-                Update Care Plan for {patientName}
+                Update Care Plan Note
               </h3>
-              <p className="font-body text-xs text-ink-500 mt-1">
-                Type your clinical note. Patient sees a friendly summary.
+              <p className="text-xs text-[#64748B] mt-0.5">
+                Patient: {patientName} · Parsed into friendly goals &amp; reminders
               </p>
             </div>
           </div>
@@ -137,16 +118,16 @@ export function DoctorNoteModal({
             type="button"
             onClick={onClose}
             disabled={isSending}
-            className="w-9 h-9 rounded-xl border-2 border-ink-900 hover:bg-ink-100 flex items-center justify-center text-ink-700 transition cursor-pointer disabled:opacity-50"
+            className="p-2 rounded-lg hover:bg-[#F1F5F9] text-[#64748B] hover:text-[#0F172A] transition-colors cursor-pointer disabled:opacity-50"
             aria-label="Close dialog"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
 
-        {/* Note Form */}
+        {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="relative">
+          <div>
             <label htmlFor="doctor-note-textarea" className="sr-only">
               Clinical Care Plan Note
             </label>
@@ -159,16 +140,17 @@ export function DoctorNoteModal({
               value={noteText}
               onChange={(e) => setNoteText(e.target.value)}
               placeholder="e.g. Increase morning walk to 20 min. Check BP every 3 days. Review in 2 weeks."
-              className="w-full p-4 rounded-2xl border-2 border-ink-900 bg-[#FAF8F5] text-ink-900 font-body text-base placeholder:text-ink-400 focus:outline-none focus:ring-2 focus:ring-brand-teal resize-none transition leading-relaxed disabled:opacity-60"
+              className="w-full p-3.5 rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] text-[#0F172A] text-sm placeholder:text-[#94A3B8] focus:outline-none focus:bg-white focus:border-[#0D9488] resize-none transition-colors leading-relaxed disabled:opacity-60"
             />
-            {/* Character counter bottom right */}
-            <div className="flex items-center justify-between mt-1 px-1">
-              <span className="font-body text-[11px] text-ink-400">
-                {noteText.length < 20 ? `Minimum 20 characters (${20 - noteText.length} more needed)` : "Valid note length"}
+            <div className="flex items-center justify-between mt-1.5 px-1">
+              <span className="text-[11px] text-[#64748B]">
+                {noteText.trim().length < 20
+                  ? `Minimum 20 characters (${20 - noteText.trim().length} more needed)`
+                  : "Ready to send"}
               </span>
               <span
-                className={`font-data text-[11px] font-semibold ${
-                  charsRemaining < 50 ? "text-amber-600" : "text-ink-400"
+                className={`text-[11px] font-medium tabular-nums ${
+                  charsRemaining < 50 ? "text-[#D97706]" : "text-[#64748B]"
                 }`}
               >
                 {noteText.length}/500
@@ -176,55 +158,42 @@ export function DoctorNoteModal({
             </div>
           </div>
 
-          {/* Inline Error Message */}
           {error && (
-            <div className="p-3 bg-red-50 border-2 border-red-300 rounded-xl flex items-center gap-2 text-xs font-body text-red-800">
-              <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />
+            <div className="p-3 bg-[#FEF2F2] border border-[#FECACA] rounded-xl flex items-center gap-2 text-xs text-[#DC2626]">
+              <AlertCircle className="w-4 h-4 shrink-0" />
               <span>{error}</span>
             </div>
           )}
 
-          {/* Actions */}
-          <div className="flex items-center justify-between pt-2">
-            <Button
+          <div className="flex items-center justify-end gap-2.5 pt-2">
+            <button
               type="button"
-              variant="ghost"
-              size="md"
               disabled={isSending}
               onClick={onClose}
-              className="border-2 border-ink-900 hover:bg-ink-100"
+              className="px-4 py-2 rounded-xl border border-[#E2E8F0] bg-white hover:bg-[#F8FAFC] text-xs font-medium text-[#475569] cursor-pointer disabled:opacity-50"
             >
               Cancel
-            </Button>
+            </button>
 
-            <Button
+            <button
               type="submit"
-              variant="primary"
-              size="md"
               disabled={!isValidLength || isSending}
-              className="bg-brand-teal text-white border-2 border-ink-900 shadow-[3px_3px_0px_#121214] disabled:opacity-50 disabled:shadow-none min-w-[150px]"
+              className="inline-flex items-center justify-center gap-1.5 px-5 py-2 rounded-xl bg-[#0D9488] hover:bg-[#0F766E] text-white text-xs font-semibold shadow-sm transition-colors cursor-pointer disabled:opacity-50"
             >
               {isSending ? (
                 <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
                   <span>Sending...</span>
                 </>
               ) : (
                 <>
-                  <CheckCircle2 className="w-4 h-4 mr-1.5" />
+                  <CheckCircle2 className="w-3.5 h-3.5" />
                   <span>Send to Patient</span>
                 </>
               )}
-            </Button>
+            </button>
           </div>
         </form>
-
-        {/* Footer */}
-        <div className="pt-3 border-t border-ink-200 text-center">
-          <p className="font-body text-xs text-ink-400">
-            Raw note is not shown to patient. CareBridge extracts friendly goals and reminders.
-          </p>
-        </div>
       </div>
     </div>
   );

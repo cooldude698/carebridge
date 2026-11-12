@@ -1,8 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { Phone, MessageSquare, Video, CheckCircle2, AlertCircle } from "lucide-react";
-import { Button } from "@/components/ui/Button";
+import { Phone, MessageSquare, Video, CheckCircle2, AlertCircle, Loader2 } from "lucide-react";
 
 interface ActionsBarProps {
   patientId: string;
@@ -28,7 +27,7 @@ export const ActionsBar: React.FC<ActionsBarProps> = ({
         body: JSON.stringify({
           patientId,
           type,
-          note: `Triggered from Doctor Portal for ${patientName}`,
+          note: `Triggered from Doctor Cockpit for ${patientName}`,
         }),
       });
 
@@ -52,55 +51,60 @@ export const ActionsBar: React.FC<ActionsBarProps> = ({
   };
 
   return (
-    <div className="relative">
-      <div className="flex flex-wrap items-center gap-3">
-        <Button
-          size="md"
-          variant="primary"
+    <div className="space-y-2.5">
+      <div className="flex flex-wrap items-center gap-2.5">
+        <button
           onClick={() => handleAction("call")}
           disabled={loadingAction !== null}
-          className="gap-2 shadow-sm"
+          className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#0F172A] hover:bg-[#1E293B] text-white text-xs font-medium transition-colors cursor-pointer disabled:opacity-50"
         >
-          <Phone className="w-4 h-4" />
+          {loadingAction === "call" ? (
+            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+          ) : (
+            <Phone className="w-3.5 h-3.5" />
+          )}
           <span>Call Patient</span>
-        </Button>
+        </button>
 
-        <Button
-          size="md"
-          variant="secondary"
+        <button
           onClick={() => handleAction("message")}
           disabled={loadingAction !== null}
-          className="gap-2 shadow-sm"
+          className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white hover:bg-[#F8FAFC] border border-[#E2E8F0] text-[#334155] text-xs font-medium transition-colors cursor-pointer disabled:opacity-50"
         >
-          <MessageSquare className="w-4 h-4" />
+          {loadingAction === "message" ? (
+            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+          ) : (
+            <MessageSquare className="w-3.5 h-3.5 text-[#4F46E5]" />
+          )}
           <span>Send Message</span>
-        </Button>
+        </button>
 
-        <Button
-          size="md"
-          variant="ghost"
+        <button
           onClick={() => handleAction("teleconsult")}
           disabled={loadingAction !== null}
-          className="gap-2 shadow-sm border-brand-teal text-brand-teal hover:bg-brand-teal/5"
+          className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white hover:bg-[#F0FDFA] border border-[#0D9488]/30 text-[#0D9488] text-xs font-medium transition-colors cursor-pointer disabled:opacity-50"
         >
-          <Video className="w-4 h-4" />
+          {loadingAction === "teleconsult" ? (
+            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+          ) : (
+            <Video className="w-3.5 h-3.5" />
+          )}
           <span>Book Teleconsult</span>
-        </Button>
+        </button>
       </div>
 
-      {/* Action Toast Feedback */}
       {toastMessage && (
         <div
-          className={`mt-3 p-3.5 rounded-md flex items-center gap-2.5 text-sm font-body shadow-md border animate-in fade-in slide-in-from-top-2 duration-200 ${
+          className={`p-3 rounded-xl flex items-center gap-2 text-xs border ${
             toastType === "success"
-              ? "bg-risk-green-bg text-risk-green border-risk-green/30"
-              : "bg-risk-red-bg text-risk-red border-risk-red/30"
+              ? "bg-[#F0FDF4] text-[#166534] border-[#BBF7D0]"
+              : "bg-[#FEF2F2] text-[#DC2626] border-[#FECACA]"
           }`}
         >
           {toastType === "success" ? (
-            <CheckCircle2 className="w-5 h-5 shrink-0" />
+            <CheckCircle2 className="w-4 h-4 shrink-0" />
           ) : (
-            <AlertCircle className="w-5 h-5 shrink-0" />
+            <AlertCircle className="w-4 h-4 shrink-0" />
           )}
           <span className="font-medium">{toastMessage}</span>
         </div>
